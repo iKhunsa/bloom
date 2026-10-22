@@ -74,6 +74,27 @@
         "visible": false
       },
       {
+        "label": "launcher",
+        "title": "Bloom Launcher",
+        "url": "launcher.html",
+        "width": 1920,
+        "height": 1080,
+        "x": 0,
+        "y": 0,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "closable": false,
+        "alwaysOnTop": true,
+        "visibleOnAllWorkspaces": true,
+        "focus": false,
+        "skipTaskbar": true,
+        "shadow": false,
+        "visible": false
+      },
+      {
         "label": "dock",
         "title": "Bloom Dock",
         "url": "dock.html",

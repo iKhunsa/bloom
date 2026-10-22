@@ -37,6 +37,36 @@ pub async fn set_notch_hovered(app: AppHandle, hovered: bool) {
     crate::services::refresh_main_interaction(&app);
 }
 
+/// Lets the notch take keyboard focus while a panel needs typed input, then
+/// makes it non-activating again. The notch is NOACTIVATE so hovering or
+/// clicking it never steals focus, but that also keeps keys from reaching it.
+#[tauri::command]
+pub fn set_notch_keyboard(app: AppHandle, active: bool) {
+    let Some(win) = app.get_webview_window("main") else {
+        return;
+    };
+    let Ok(hwnd) = win.hwnd() else {
+        return;
+    };
+    unsafe {
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
+        };
+        crate::state::NOTCH_KEYBOARD_HWND
+            .store(if active { hwnd.0 as isize } else { 0 }, Ordering::Relaxed);
+        let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+        let flag = WS_EX_NOACTIVATE.0 as isize;
+        SetWindowLongPtrW(
+            hwnd,
+            GWL_EXSTYLE,
+            if active { ex & !flag } else { ex | flag },
+        );
+    }
+    if active {
+        let _ = win.set_focus();
+    }
+}
+
 #[tauri::command]
 pub async fn set_notch_visible(visible: bool) {
     NOTCH_IS_VISIBLE.store(visible, Ordering::Relaxed);
@@ -662,7 +692,11 @@ fn toggle_start_menu() {
 #[tauri::command]
 pub async fn open_app(app: AppHandle, app_name: String) {
     if app_name == "start" {
-        toggle_start_menu();
+        if crate::launcher::enabled(&app) {
+            crate::launcher::toggle_launcher(app);
+        } else {
+            toggle_start_menu();
+        }
         return;
     }
 

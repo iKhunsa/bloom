@@ -96,6 +96,9 @@ export function useSettings() {
 	const [dockWinNumberEnabled, setDockWinNumberEnabled] = useState(
 		() => localStorage.getItem("bloom-dock-win-number-enabled") !== "false"
 	);
+	const [launcherEnabled, setLauncherEnabled] = useState(
+		() => localStorage.getItem("bloom-launcher-enabled") !== "false"
+	);
 	const [dockExtrasPosition, setDockExtrasPosition] = useState(
 		() => localStorage.getItem("bloom-dock-extras-position") || "off"
 	);
@@ -216,6 +219,7 @@ export function useSettings() {
 			apply(getVal("bloom-start-icon"), setStartIcon, (v) => v);
 			apply(getVal("bloom-dock-adaptive"), setDockAdaptive, readBool);
 			apply(getVal("bloom-dock-win-number-enabled"), setDockWinNumberEnabled, readBool);
+			apply(getVal("bloom-launcher-enabled"), setLauncherEnabled, readBool);
 			apply(getVal("bloom-dock-extras-position"), setDockExtrasPosition, (v) => v);
 			apply(getVal("bloom-dock-extras-drives"), setDockExtrasDrives, readBool);
 			apply(getVal("bloom-dock-extras-recycle-bin"), setDockExtrasRecycleBin, readBool);
@@ -349,6 +353,7 @@ export function useSettings() {
 		"bloom-dock-preview-enabled": setDockPreviewEnabled,
 		"bloom-dock-adaptive": setDockAdaptive,
 		"bloom-dock-win-number-enabled": setDockWinNumberEnabled,
+		"bloom-launcher-enabled": setLauncherEnabled,
 		"bloom-dock-extras-position": setDockExtrasPosition,
 		"bloom-dock-extras-drives": setDockExtrasDrives,
 		"bloom-dock-extras-recycle-bin": setDockExtrasRecycleBin,
@@ -659,6 +664,12 @@ export function useSettings() {
 		const next = !dockWinNumberEnabled;
 		setDockWinNumberEnabled(next);
 		saveSetting("bloom-dock-win-number-enabled", String(next));
+	};
+
+	const toggleLauncher = () => {
+		const next = !launcherEnabled;
+		setLauncherEnabled(next);
+		saveSetting("bloom-launcher-enabled", String(next));
 	};
 
 	const handleDockExtrasPositionChange = (position: string) => {
@@ -1003,6 +1014,8 @@ export function useSettings() {
 		toggleDockAdaptive,
 		dockWinNumberEnabled,
 		toggleDockWinNumber,
+		launcherEnabled,
+		toggleLauncher,
 		dockExtrasPosition,
 		handleDockExtrasPositionChange,
 		dockExtrasDrives,

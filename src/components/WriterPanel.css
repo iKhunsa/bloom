@@ -1,7 +1,9 @@
 /* The notch's writer panel: fix spelling and translate. Builds on the shared
    .qp layout and .qp-* controls from QuickPanel.css. */
+/* Extra bottom padding keeps the note clear of the notch's rounded corners. */
 .wp {
 	gap: 6px;
+	padding-bottom: 16px;
 }
 
 .wp-text {

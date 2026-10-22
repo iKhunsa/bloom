@@ -6,6 +6,8 @@ mod bluetooth;
 mod commands;
 mod diagnostics;
 mod dock_extras;
+mod gpu;
+mod launcher;
 mod network;
 mod services;
 mod shelf;
@@ -143,6 +145,7 @@ fn main() {
             set_dock_hovered,
             set_notch_hovered,
             set_notch_visible,
+            set_notch_keyboard,
             setup_shelf_drop,
             shelf_thumbnail,
             shelf_drag_icon,
@@ -222,6 +225,9 @@ fn main() {
             audio_devices::audio_set_default_device,
             audio_devices::get_mic_state,
             audio_devices::set_mic_level,
+            gpu::get_gpu_usage,
+            launcher::toggle_launcher,
+            launcher::hide_launcher,
             network::get_network_status,
             network::open_network_connections
         ])
@@ -402,6 +408,20 @@ fn main() {
                 }
             }
 
+            if let Some(launcher_win) = app.get_webview_window("launcher") {
+                // Blurs the desktop behind the launcher, like Launchpad.
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = window_vibrancy::apply_acrylic(&launcher_win, Some((12, 14, 34, 120)));
+                }
+                let win_clone = launcher_win.clone();
+                launcher_win.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        api.prevent_close();
+                        let _ = win_clone.hide();
+                    }
+                });
+            }
             if let Some(settings_win) = app.get_webview_window("settings") {
                 #[cfg(target_os = "windows")]
                 {

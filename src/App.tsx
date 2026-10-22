@@ -22,7 +22,8 @@ import {
 	VolumeLowIcon,
 	VolumeHighIcon,
 	MusicNoteIcon,
-	HeadphonesIcon
+	HeadphonesIcon,
+	BitcoinIcon
 } from "./icons";
 import { CompactMediaPlayer } from "./CompactMediaPlayer";
 import { useWeather } from "./hooks/useWeather";
@@ -40,6 +41,7 @@ import { WifiPanel } from "./components/WifiPanel";
 import { BluetoothPanel } from "./components/BluetoothPanel";
 import { AudioDevicePanel } from "./components/AudioDevicePanel";
 import { WriterPanel } from "./components/WriterPanel";
+import { MetricsPanel, METRIC_HISTORY } from "./components/MetricsPanel";
 import { useCryptoPrice } from "./hooks/useCryptoPrice";
 import {
 	Cpu,
@@ -60,7 +62,9 @@ import {
 	Mic,
 	Network,
 	Volume2,
-	Bitcoin
+	ArrowUp,
+	ArrowDown,
+	Gpu
 } from "lucide-react";
 
 /**
@@ -415,6 +419,10 @@ interface MicState {
 	muted: boolean;
 }
 
+// Status lines past this length get the smaller type (see .cc-pill-status.long).
+const statusClass = (text: string) =>
+	text.length > 22 ? "cc-pill-status long" : "cc-pill-status";
+
 const lanStatusText = (n: NetworkStatus | null) => {
 	if (n === null) return "…";
 	if (n.lan_connected) return n.internet ? "Online" : "No internet";
@@ -444,6 +452,7 @@ type BloomMode =
 	| "calendar"
 	| "command-center"
 	| "writer"
+	| "metrics"
 	| "announcement"
 	| "status"
 	| "shelf"
@@ -631,6 +640,12 @@ function App() {
 	// System metrics for status widgets
 	const [cpuUsage, setCpuUsage] = useState(0);
 	const [ramUsage, setRamUsage] = useState(0);
+	// Null until the first read works; stays null on PCs without GPU counters.
+	const [gpuUsage, setGpuUsage] = useState<number | null>(null);
+	// Live charts: opened by clicking the RAM or GPU widget, one sample a second.
+	const [ramHistory, setRamHistory] = useState<number[]>([]);
+	const [gpuHistory, setGpuHistory] = useState<number[]>([]);
+	const [metricFocus, setMetricFocus] = useState<"ram" | "gpu">("ram");
 	const [diskSpace, setDiskSpace] = useState(0);
 	const [netUpSpeed, setNetUpSpeed] = useState(0);
 	const [netDownSpeed, setNetDownSpeed] = useState(0);
@@ -1521,6 +1536,7 @@ function App() {
 			prev === "music" ||
 			prev === "command-center" ||
 			prev === "writer" ||
+			prev === "metrics" ||
 			prev === "calendar" ||
 			prev === "status" ||
 			prev === "shelf" ||
@@ -2004,7 +2020,7 @@ function App() {
 	};
 
 	// Expands the notch into a panel, or into an activity's own view.
-	const openNotch = (view: NotchPanel | "music" | "shelf") => {
+	const openNotch = (view: NotchPanel | "music" | "shelf" | "metrics") => {
 		if (bloomMode === "announcement") return;
 		setIsOpen(true);
 		setBloomMode(view);
@@ -2235,6 +2251,43 @@ function App() {
 		return () => clearInterval(interval);
 	}, [bloomMode, refreshWifiStatus]);
 
+	// The GPU widget polls only while it is placed in the status strip.
+	const gpuPlaced = statusWidgets.left.includes("gpu") || statusWidgets.right.includes("gpu");
+	useEffect(() => {
+		if (!gpuPlaced) return;
+		const read = () =>
+			invoke<number>("get_gpu_usage")
+				.then(setGpuUsage)
+				.catch(() => setGpuUsage(null));
+		read();
+		const interval = setInterval(read, 3000);
+		return () => clearInterval(interval);
+	}, [gpuPlaced]);
+
+	// While the charts are open, sample RAM and GPU every second.
+	useEffect(() => {
+		if (bloomMode !== "metrics") return;
+		setRamHistory([]);
+		setGpuHistory([]);
+		const sample = () => {
+			invoke<number>("get_ram_usage")
+				.then((v) => {
+					setRamUsage(v);
+					setRamHistory((h) => [...h, v].slice(-METRIC_HISTORY));
+				})
+				.catch(() => {});
+			invoke<number>("get_gpu_usage")
+				.then((v) => {
+					setGpuUsage(v);
+					setGpuHistory((h) => [...h, v].slice(-METRIC_HISTORY));
+				})
+				.catch(() => setGpuUsage(null));
+		};
+		sample();
+		const interval = setInterval(sample, 1000);
+		return () => clearInterval(interval);
+	}, [bloomMode]);
+
 	// Poll system metrics for status widgets
 	useEffect(() => {
 		const fetchMetrics = () => {
@@ -2417,7 +2470,8 @@ function App() {
 				// Client rects are zoomed by the notch scale; offsets are not.
 				if (!pill) {
 					setStatusTooltip({ id, side: "below", offset: 8 });
-				} else if (!isOpen) {
+				} else if (!isOpen || id === "btc") {
+					// The price card always hangs below the notch, open or not.
 					const gap = (pill.bottom - own.bottom) / scale;
 					setStatusTooltip({ id, side: "below", offset: Math.max(0, gap) + 8 });
 				} else if (own.left + own.width / 2 >= pill.left + pill.width / 2) {
@@ -2609,11 +2663,21 @@ function App() {
 		id: string,
 		tooltip: string,
 		content: React.ReactNode,
-		onEnter?: () => void
+		onEnter?: () => void,
+		onClick?: () => void
 	) => (
 		<div
-			className="passive-feature"
+			className={onClick ? "passive-feature clickable" : "passive-feature"}
 			key={id}
+			onClick={
+				onClick
+					? (e) => {
+							e.stopPropagation();
+							hideStatusTooltip();
+							onClick();
+						}
+					: undefined
+			}
 			onMouseEnter={(e) => {
 				onEnter?.();
 				showStatusTooltip(id, e.currentTarget);
@@ -2641,6 +2705,12 @@ function App() {
 			</AnimatePresence>
 		</div>
 	);
+
+	// Clicking the RAM or GPU widget opens the notch into the live charts.
+	const openMetrics = (focus: "ram" | "gpu") => {
+		setMetricFocus(focus);
+		openNotch("metrics");
+	};
 
 	// Render a status widget by ID
 	const renderStatusWidget = (id: string) => {
@@ -2687,11 +2757,25 @@ function App() {
 			case "ram":
 				return statusWidget(
 					"ram",
-					"RAM Usage",
+					"RAM Usage — click for the live chart",
 					<>
 						<MemoryStick size={12} strokeWidth={2} />
 						<span className="label">{Math.round(ramUsage)}%</span>
-					</>
+					</>,
+					undefined,
+					() => openMetrics("ram")
+				);
+			case "gpu":
+				if (gpuUsage === null) return null;
+				return statusWidget(
+					"gpu",
+					"GPU Usage — click for the live chart",
+					<>
+						<Gpu size={12} strokeWidth={2} />
+						<span className="label">{gpuUsage}%</span>
+					</>,
+					undefined,
+					() => openMetrics("gpu")
 				);
 			case "disk":
 				return statusWidget(
@@ -2720,12 +2804,19 @@ function App() {
 					`$${n.toLocaleString("en-US", { maximumFractionDigits: n >= 1000 ? 0 : 2 })}`;
 				return statusWidget(
 					"btc",
-					`Bitcoin ${usd(btc.price)} · 24h ${change >= 0 ? "+" : ""}${change.toFixed(2)}% · H ${usd(btc.high24h)} · L ${usd(btc.low24h)}`,
+					[
+						`Bitcoin  ${usd(btc.price)}`,
+						`24h  ${change >= 0 ? "+" : ""}${change.toFixed(2)}%`,
+						`High  ${usd(btc.high24h)}   Low  ${usd(btc.low24h)}`
+					].join("\n"),
 					<>
-						<Bitcoin size={12} strokeWidth={2} />
-						<span className="label" style={{ color: change >= 0 ? "#4ade80" : "#f87171" }}>
-							${(btc.price / 1000).toFixed(1)}K
-						</span>
+						<BitcoinIcon size={14} />
+						<span className="label btc-price">${(btc.price / 1000).toFixed(1)}K</span>
+						{change >= 0 ? (
+							<ArrowUp size={10} strokeWidth={3} style={{ color: "#4ade80" }} />
+						) : (
+							<ArrowDown size={10} strokeWidth={3} style={{ color: "#f87171" }} />
+						)}
 					</>
 				);
 			}
@@ -2759,6 +2850,7 @@ function App() {
 		if (bloomMode === "shelf") return 380;
 		if (bloomMode === "command-center" && isOpen) return 350;
 		if (bloomMode === "writer" && isOpen) return 400;
+		if (bloomMode === "metrics") return 380;
 		if (
 			bloomMode === "wifi" ||
 			bloomMode === "bluetooth" ||
@@ -2803,7 +2895,8 @@ function App() {
 			return shelfOverflowing ? 190 : 176;
 		}
 		if (bloomMode === "command-center") return isOpen ? 230 : 36;
-		if (bloomMode === "writer") return isOpen ? 262 : 36;
+		if (bloomMode === "writer") return isOpen ? 272 : 36;
+		if (bloomMode === "metrics") return 150;
 		if (
 			bloomMode === "wifi" ||
 			bloomMode === "bluetooth" ||
@@ -3612,6 +3705,25 @@ function App() {
 									)}
 								</AnimatePresence>
 
+								{/* Live RAM / GPU charts, opened from the status widgets */}
+								<AnimatePresence>
+									{bloomMode === "metrics" && (
+										<motion.div
+											key="metrics-view"
+											initial={{ opacity: 0 }}
+											animate={{ opacity: 1 }}
+											exit={{ opacity: 0, filter: "blur(4px)", transition: { duration: 0.1 } }}
+											transition={{ type: "spring", stiffness: 400, damping: 30 }}
+										>
+											<MetricsPanel
+												ram={ramHistory}
+												gpu={gpuUsage === null ? null : gpuHistory}
+												focus={metricFocus}
+											/>
+										</motion.div>
+									)}
+								</AnimatePresence>
+
 								{/* Command Center Panel */}
 								<AnimatePresence>
 									{bloomMode === "command-center" && (
@@ -3645,14 +3757,14 @@ function App() {
 												<div
 													className="cc-pill-tile"
 													onClick={openAudioPanel("output")}
-													title="Choose the sound output device"
+													title={outputName ?? "Choose the sound output device"}
 												>
 													<div className="cc-pill-icon-wrapper">
 														<Volume2 />
 													</div>
 													<div className="cc-pill-info">
 														<span className="cc-pill-title">Output</span>
-														<span className="cc-pill-status">{outputName ?? "…"}</span>
+														<span className={statusClass(outputName ?? "…")}>{outputName ?? "…"}</span>
 													</div>
 												</div>
 
@@ -3698,14 +3810,14 @@ function App() {
 												<div
 													className="cc-pill-tile"
 													onClick={openAudioPanel("input")}
-													title="Choose the microphone"
+													title={inputName ?? "Choose the microphone"}
 												>
 													<div className="cc-pill-icon-wrapper">
 														<Mic />
 													</div>
 													<div className="cc-pill-info">
 														<span className="cc-pill-title">Microphone</span>
-														<span className="cc-pill-status">{inputName ?? "No microphone"}</span>
+														<span className={statusClass(inputName ?? "No microphone")}>{inputName ?? "No microphone"}</span>
 													</div>
 												</div>
 											</div>

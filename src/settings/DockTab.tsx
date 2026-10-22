@@ -8,6 +8,7 @@ import {
 	Columns2,
 	Maximize2,
 	Keyboard,
+	LayoutGrid,
 	Sparkles,
 	RotateCcw,
 	Timer,
@@ -118,6 +119,8 @@ interface DockTabProps {
 	toggleDockAdaptive: () => void;
 	dockWinNumberEnabled: boolean;
 	toggleDockWinNumber: () => void;
+	launcherEnabled: boolean;
+	toggleLauncher: () => void;
 	dockExtrasPosition: string;
 	handleDockExtrasPositionChange: (position: string) => void;
 	dockExtrasDrives: boolean;
@@ -154,6 +157,8 @@ export function DockTab({
 	toggleDockAdaptive,
 	dockWinNumberEnabled,
 	toggleDockWinNumber,
+	launcherEnabled,
+	toggleLauncher,
 	dockExtrasPosition,
 	handleDockExtrasPositionChange,
 	dockExtrasDrives,
@@ -274,7 +279,6 @@ export function DockTab({
 							icon={Keyboard}
 							label="Win+Number Shortcuts"
 							desc="Open pinned apps with Win+1 through Win+9"
-							divider={dockMode === "fixed"}
 						>
 							<label className="toggle-switch">
 								<input
@@ -282,6 +286,18 @@ export function DockTab({
 									checked={dockWinNumberEnabled}
 									onChange={toggleDockWinNumber}
 								/>
+								<span className="slider"></span>
+							</label>
+						</SettingRow>
+
+						<SettingRow
+							icon={LayoutGrid}
+							label="App Launcher"
+							desc="The Win key and the Start button open Bloom's app grid instead of the Start menu"
+							divider={dockMode === "fixed"}
+						>
+							<label className="toggle-switch">
+								<input type="checkbox" checked={launcherEnabled} onChange={toggleLauncher} />
 								<span className="slider"></span>
 							</label>
 						</SettingRow>

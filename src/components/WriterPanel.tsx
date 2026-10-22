@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import {
 	ArrowUp,
@@ -14,6 +15,7 @@ import {
 	correctText,
 	languageName,
 	MAX_TEXT_LENGTH,
+	SOURCE_LANGUAGE,
 	TARGET_LANGUAGES,
 	translateText
 } from "../writer";
@@ -54,6 +56,31 @@ export function WriterPanel({ onPinChange }: WriterPanelProps) {
 		draft.note = note;
 	}, [text, result, note]);
 
+	// The notch never takes keyboard focus on its own; give it while this panel
+	// is open so typing works, and ready the text box.
+	useEffect(() => {
+		invoke("set_notch_keyboard", { active: true })
+			.catch(console.error)
+			.finally(() => textRef.current?.focus());
+		return () => {
+			invoke("set_notch_keyboard", { active: false }).catch(console.error);
+		};
+	}, []);
+
+	// Ctrl+V anywhere in the panel (not already in a field) fills the text box.
+	useEffect(() => {
+		const onPaste = (e: ClipboardEvent) => {
+			if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
+			const clip = e.clipboardData?.getData("text");
+			if (!clip) return;
+			e.preventDefault();
+			setText(clip.slice(0, MAX_TEXT_LENGTH));
+			textRef.current?.focus();
+		};
+		document.addEventListener("paste", onPaste);
+		return () => document.removeEventListener("paste", onPaste);
+	}, []);
+
 	// Let go of the notch when the panel goes away.
 	useEffect(() => () => onPinChange(false), [onPinChange]);
 
@@ -80,18 +107,24 @@ export function WriterPanel({ onPinChange }: WriterPanelProps) {
 			if (kind === "fix") {
 				const fixed = await correctText(input);
 				setResult(fixed.text);
+				// The corrected text is ready to paste right away.
+				const copied = await copy(fixed.text);
 				setNote(
-					fixed.fixes === 0
-						? "No mistakes found"
-						: `${fixed.fixes} ${fixed.fixes === 1 ? "fix" : "fixes"}${
-								fixed.language ? ` · ${languageName(fixed.language)}` : ""
-							}`
+					`${
+						fixed.fixes === 0
+							? "No mistakes found"
+							: `${fixed.fixes} ${fixed.fixes === 1 ? "fix" : "fixes"}${
+									fixed.language ? ` · ${languageName(fixed.language)}` : ""
+								}`
+					}${copied ? " · Copied" : ""}`
 				);
 			} else {
 				const translated = await translateText(input, target);
-				setResult(translated.text);
+				setResult(translated);
+				// The translation is ready to paste right away.
+				const copied = await copy(translated);
 				setNote(
-					`${translated.source ? languageName(translated.source) : "Auto"} → ${languageName(target)}`
+					`${languageName(SOURCE_LANGUAGE)} → ${languageName(target)}${copied ? " · Copied" : ""}`
 				);
 			}
 		} catch (e) {
@@ -111,10 +144,16 @@ export function WriterPanel({ onPinChange }: WriterPanelProps) {
 		}
 	};
 
-	const copy = async () => {
-		await writeText(result).catch(console.error);
+	const copy = async (value: string): Promise<boolean> => {
+		try {
+			await writeText(value);
+		} catch (e) {
+			console.error("[writer] copy failed:", e);
+			return false;
+		}
 		setCopied(true);
 		window.setTimeout(() => setCopied(false), 1200);
+		return true;
 	};
 
 	const pickTarget = (code: string) => {
@@ -213,7 +252,7 @@ export function WriterPanel({ onPinChange }: WriterPanelProps) {
 							</button>
 							<button
 								className="qp-icon-btn"
-								onClick={() => void copy()}
+								onClick={() => void copy(result)}
 								aria-label="Copy result"
 								title="Copy result"
 							>

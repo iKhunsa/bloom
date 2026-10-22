@@ -27,6 +27,9 @@ static WIN_KEY_DOWN: AtomicBool = AtomicBool::new(false);
 /// Digit (1-9) of the currently held Win+Number combo, 0 when none. Key
 /// auto-repeat re-fires the keydown; only the first press may toggle an app.
 static WIN_NUMBER_HELD: AtomicU8 = AtomicU8::new(0);
+/// True from a Win press until any other key joins it: a Win release while
+/// this is still set is a lone tap, which opens the Bloom launcher.
+static WIN_TAP_CANDIDATE: AtomicBool = AtomicBool::new(false);
 /// Virtual key Microsoft documents as "unassigned", used as the mask key.
 /// See `send_start_menu_mask`.
 const MASK_VK: u16 = 0xE8;
@@ -45,7 +48,8 @@ pub fn setup_keyboard_hook(app_handle: AppHandle) {
     std::thread::spawn(move || {
         // Exiting removes the hook with the process; never touch it mid-shutdown.
         while !SHUTTING_DOWN.load(Ordering::Relaxed) {
-            let wanted = NATIVE_TASKBAR_HIDDEN.load(Ordering::Relaxed) && dock_win_number_enabled();
+            let wanted = NATIVE_TASKBAR_HIDDEN.load(Ordering::Relaxed)
+                && (dock_win_number_enabled() || launcher_on_win_key());
             if wanted != (KEYBOARD_HOOK.load(Ordering::Relaxed) != 0) {
                 // A low-level hook runs on the thread that installed it, which
                 // needs a message loop, so install and remove it on the main thread.
@@ -89,6 +93,13 @@ fn dock_win_number_enabled() -> bool {
     crate::utils::get_setting_str(app, "bloom-dock-win-number-enabled")
         .map(|v| v != "false")
         .unwrap_or(true)
+}
+
+/// The Bloom launcher takes over a lone Win tap (Settings: bloom-launcher-enabled).
+fn launcher_on_win_key() -> bool {
+    KEYBOARD_HOOK_APP_HANDLE
+        .get()
+        .is_none_or(crate::launcher::enabled)
 }
 
 /// Whether one of Bloom's HUD overlays is enabled (`bloom-volume-overlay-enabled`,
@@ -151,6 +162,45 @@ fn send_start_menu_mask() {
     }
 }
 
+/// Replaces a swallowed Win release: the mask key first, so Explorer treats
+/// the press as a modifier and doesn't open Start, then the Win key up itself.
+fn send_mask_then_win_release(win_vk: u16) {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP,
+        VIRTUAL_KEY,
+    };
+    let key = |vk: u16, flags: KEYBD_EVENT_FLAGS| INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: VIRTUAL_KEY(vk),
+                wScan: 0,
+                dwFlags: flags,
+                time: 0,
+                dwExtraInfo: 0,
+            },
+        },
+    };
+    let inputs = [
+        key(MASK_VK, Default::default()),
+        key(MASK_VK, KEYEVENTF_KEYUP),
+        key(win_vk, KEYEVENTF_KEYUP),
+    ];
+    unsafe {
+        SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
+    }
+}
+
+/// Opens (or closes) the launcher without blocking the input pipeline.
+fn toggle_launcher_async() {
+    let Some(app) = KEYBOARD_HOOK_APP_HANDLE.get().cloned() else {
+        return;
+    };
+    tauri::async_runtime::spawn(async move {
+        crate::launcher::toggle_launcher(app);
+    });
+}
+
 /// Hands the slot to the dock window, whose click handler already knows how to
 /// focus a running window or launch a pinned app.
 fn emit_dock_win_number(index: u8) {
@@ -184,14 +234,29 @@ unsafe extern "system" fn keyboard_hook_proc(
             if vk_code == VK_LWIN || vk_code == VK_RWIN {
                 if is_down {
                     WIN_KEY_DOWN.store(true, Ordering::Relaxed);
+                    WIN_TAP_CANDIDATE.store(true, Ordering::Relaxed);
                     // A fresh Win press always starts a fresh combo, even if the
                     // previous digit's keyup was missed.
                     WIN_NUMBER_HELD.store(0, Ordering::Relaxed);
                 } else if is_up {
                     WIN_KEY_DOWN.store(false, Ordering::Relaxed);
                     WIN_NUMBER_HELD.store(0, Ordering::Relaxed);
+                    // A lone tap opens the Bloom launcher instead of Start: the
+                    // release is swallowed and replaced by mask key + release.
+                    if WIN_TAP_CANDIDATE.swap(false, Ordering::Relaxed)
+                        && NATIVE_TASKBAR_HIDDEN.load(Ordering::Relaxed)
+                        && launcher_on_win_key()
+                    {
+                        send_mask_then_win_release(vk_code.0);
+                        toggle_launcher_async();
+                        return windows::Win32::Foundation::LRESULT(1);
+                    }
                 }
             } else if WIN_KEY_DOWN.load(Ordering::Relaxed) {
+                if is_down {
+                    // Win+anything is a shortcut, not a tap.
+                    WIN_TAP_CANDIDATE.store(false, Ordering::Relaxed);
+                }
                 if let Some(index) = win_number_index(vk_code.0) {
                     let slot = index + 1;
                     if is_up {

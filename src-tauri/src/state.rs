@@ -28,6 +28,10 @@ pub static NOTCH_IS_HOVERED: AtomicBool = AtomicBool::new(false);
 /// Frontend-reported whether the notch is actually on screen. While false in
 /// smart/peek mode the notch must stay click-through even over its footprint.
 pub static NOTCH_IS_VISIBLE: AtomicBool = AtomicBool::new(true);
+/// HWND of the notch while a panel needs the keyboard (the writer), 0 otherwise.
+/// `re_assert_topmost` leaves that window activatable instead of re-stamping
+/// WS_EX_NOACTIVATE, which would stop it from ever receiving typed keys.
+pub static NOTCH_KEYBOARD_HWND: AtomicIsize = AtomicIsize::new(0);
 pub static MENU_IS_OPEN: AtomicBool = AtomicBool::new(false);
 // The dock window's handle, for the mouse hook to tell whether a press lands
 // on the dock (which closes its own menus) or outside it.

@@ -197,7 +197,8 @@
 	font-weight: 600;
 	white-space: nowrap;
 	overflow: hidden;
-	text-overflow: ellipsis;
+	-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+	mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
 }
 
 .qp-row-sub {

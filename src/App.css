@@ -1775,7 +1775,9 @@ img {
 /* Pills Grid */
 .cc-pills-grid {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	/* minmax(0, …) lets a column shrink below its content, so a long device name
+	   can't push its tile past the grid and get clipped square by the notch. */
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 10px;
 	width: 100%;
 	height: 78px;
@@ -1794,6 +1796,8 @@ img {
 	user-select: none;
 	height: 34px;
 	box-sizing: border-box;
+	min-width: 0;
+	overflow: hidden;
 }
 
 .cc-pill-tile:hover {
@@ -1825,6 +1829,7 @@ img {
 .cc-pill-info {
 	display: flex;
 	flex-direction: column;
+	flex: 1;
 	min-width: 0;
 	line-height: 1.15;
 }
@@ -1839,10 +1844,17 @@ img {
 	font-size: 7.5px;
 	color: var(--bloom-text-muted, rgba(255, 255, 255, 0.4));
 	font-weight: 500;
-	/* The connected network's name can be long. */
+	/* Device and network names can be long: they fade out at the edge instead of
+	   being cut off or ending in an ellipsis. */
 	white-space: nowrap;
 	overflow: hidden;
-	text-overflow: ellipsis;
+	-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+	mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+}
+
+/* Very long names also shrink a little so more of them stays readable. */
+.cc-pill-status.long {
+	font-size: 6.5px;
 }
 
 /* Active Monochrome pill states */
@@ -2410,4 +2422,16 @@ img {
 .cmp-output-check {
 	font-size: 11px;
 	opacity: 0.6;
+}
+
+/* Bitcoin price: full-strength text so it stays crisp next to the logo. */
+.passive-feature .label.btc-price {
+	color: var(--bloom-text, #fff);
+	font-weight: 600;
+	opacity: 1;
+}
+
+/* RAM and GPU widgets open the live charts when clicked. */
+.passive-feature.clickable {
+	cursor: pointer;
 }

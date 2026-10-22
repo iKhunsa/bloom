@@ -220,6 +220,8 @@ function SettingsApp() {
 							toggleDockAdaptive={settings.toggleDockAdaptive}
 							dockWinNumberEnabled={settings.dockWinNumberEnabled}
 							toggleDockWinNumber={settings.toggleDockWinNumber}
+							launcherEnabled={settings.launcherEnabled}
+							toggleLauncher={settings.toggleLauncher}
 							dockExtrasPosition={settings.dockExtrasPosition}
 							handleDockExtrasPositionChange={settings.handleDockExtrasPositionChange}
 							dockExtrasDrives={settings.dockExtrasDrives}

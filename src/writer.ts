@@ -215,21 +215,18 @@ export async function correctText(text: string): Promise<Correction> {
 	};
 }
 
-export interface Translation {
-	text: string;
-	/** Detected source language code, e.g. "es". */
-	source: string;
-}
+/** Language the text is always written in. Fixed instead of auto-detected, which guesses wrong on short phrases. */
+export const SOURCE_LANGUAGE = "es";
 
-export async function translateText(text: string, target: string): Promise<Translation> {
-	const response = await fetch(`${TRANSLATE_URL}&sl=auto&tl=${encodeURIComponent(target)}`, {
-		method: "POST",
-		body: new URLSearchParams({ q: text })
-	});
+export async function translateText(text: string, target: string): Promise<string> {
+	const response = await fetch(
+		`${TRANSLATE_URL}&sl=${SOURCE_LANGUAGE}&tl=${encodeURIComponent(target)}`,
+		{
+			method: "POST",
+			body: new URLSearchParams({ q: text })
+		}
+	);
 	if (!response.ok) throw new Error(`Translation failed (${response.status})`);
 	const data = await response.json();
-	return {
-		text: (data[0] as [string][]).map((segment) => segment[0]).join(""),
-		source: data[2] ?? ""
-	};
+	return (data[0] as [string][]).map((segment) => segment[0]).join("");
 }
