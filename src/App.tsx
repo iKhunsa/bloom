@@ -38,6 +38,9 @@ import { EdgeSurface } from "./components/EdgeSurface";
 import { ShelfTypeIcon } from "./components/ShelfTypeIcon";
 import { WifiPanel } from "./components/WifiPanel";
 import { BluetoothPanel } from "./components/BluetoothPanel";
+import { AudioDevicePanel } from "./components/AudioDevicePanel";
+import { WriterPanel } from "./components/WriterPanel";
+import { useCryptoPrice } from "./hooks/useCryptoPrice";
 import {
 	Cpu,
 	MemoryStick,
@@ -53,7 +56,11 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	Inbox,
-	Music
+	Music,
+	Mic,
+	Network,
+	Volume2,
+	Bitcoin
 } from "lucide-react";
 
 /**
@@ -66,8 +73,8 @@ import {
  *   Dragging files onto the notch also opens the shelf. Wheel/swipe switches
  *   between tool panels, including when a live activity occupies the pill.
  */
-type NotchPanel = "calendar" | "command-center";
-const NOTCH_PANELS: readonly NotchPanel[] = ["calendar", "command-center"];
+type NotchPanel = "calendar" | "command-center" | "writer";
+const NOTCH_PANELS: readonly NotchPanel[] = ["calendar", "command-center", "writer"];
 const asNotchPanel = (value: unknown): NotchPanel | null =>
 	NOTCH_PANELS.includes(value as NotchPanel) ? (value as NotchPanel) : null;
 
@@ -151,26 +158,6 @@ const playTimerChime = () => {
 };
 
 // Simple SVG icons
-function WifiIcon({ enabled, connected }: { enabled: boolean; connected: boolean }) {
-	return (
-		<svg
-			width="18"
-			height="18"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="2.5"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			opacity={!enabled ? 0.4 : connected ? 1 : 0.7}
-		>
-			<path d="M5 12.55a11 11 0 0 1 14.08 0" />
-			<path d="M1.42 9a16 16 0 0 1 21.16 0" />
-			<path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
-			<line x1="12" y1="20" x2="12.01" y2="20" />
-		</svg>
-	);
-}
 
 function TrayIcon() {
 	return (
@@ -358,12 +345,15 @@ export const Visualizer = memo(function Visualizer({
 // Number of week rows the current month occupies. Calendar mode sizes the
 // notch to the month so five-row months stay compact and six-row months never
 // clip the last row.
-const calendarMonthRows = (() => {
-	const now = new Date();
-	const firstWeekday = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
-	const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+const monthRows = (year: number, month: number) => {
+	const firstWeekday = new Date(year, month, 1).getDay();
+	const daysInMonth = new Date(year, month + 1, 0).getDate();
 	return Math.ceil((firstWeekday + daysInMonth) / 7);
-})();
+};
+const currentMonthRows = () => {
+	const now = new Date();
+	return monthRows(now.getFullYear(), now.getMonth());
+};
 
 // Odometer-style digit for the timer clock. When the value changes the old
 // digit rolls up and out while the new one rolls in from below with a slight
@@ -411,6 +401,26 @@ interface WifiStatus {
 	ssid: string | null;
 }
 
+interface NetworkStatus {
+	lan_connected: boolean;
+	internet: boolean;
+	lan_name: string | null;
+}
+
+interface MicState {
+	id: string;
+	name: string;
+	/** Input gain, 0 to 1. */
+	level: number;
+	muted: boolean;
+}
+
+const lanStatusText = (n: NetworkStatus | null) => {
+	if (n === null) return "…";
+	if (n.lan_connected) return n.internet ? "Online" : "No internet";
+	return n.internet ? "Online · no cable" : "Offline";
+};
+
 // A shelf file's preview from the backend: a picture when one can be made,
 // else the opening text of a document or text file, and whether it's a folder
 // (for the placeholder icon).
@@ -433,11 +443,14 @@ type BloomMode =
 	| "music"
 	| "calendar"
 	| "command-center"
+	| "writer"
 	| "announcement"
 	| "status"
 	| "shelf"
 	| "wifi"
-	| "bluetooth";
+	| "bluetooth"
+	| "audio-output"
+	| "audio-input";
 
 // The shelf is a short-lived stash: one row, newest first, oldest evicted.
 const SHELF_MAX_ITEMS = 10;
@@ -603,12 +616,17 @@ function App() {
 	// default on startup.
 	const [wifiStatus, setWifiStatus] = useState<WifiStatus | null>(null);
 	const wifiEnabled = wifiStatus?.enabled ?? false;
-	const wifiConnected = wifiStatus?.connected ?? false;
 	const [bluetoothEnabled, setBluetoothEnabled] = useState(true);
 	// Names of connected Bluetooth devices, for the controls tile.
 	const [btConnectedNames, setBtConnectedNames] = useState<string[]>([]);
 	const [batterySaverEnabled, setBatterySaverEnabled] = useState(false);
-	const [currentBrightness, setCurrentBrightness] = useState(50);
+	// Default microphone and its input gain. Windows keeps one level per device,
+	// so re-reading after a device switch shows that microphone's own level.
+	const [mic, setMic] = useState<MicState | null>(null);
+	const [network, setNetwork] = useState<NetworkStatus | null>(null);
+	// Default playback / recording device names, for the controls tiles.
+	const [outputName, setOutputName] = useState<string | null>(null);
+	const [inputName, setInputName] = useState<string | null>(null);
 
 	// System metrics for status widgets
 	const [cpuUsage, setCpuUsage] = useState(0);
@@ -620,6 +638,9 @@ function App() {
 		left: ["weather"],
 		right: ["battery"]
 	});
+	// Only subscribes to the price feed while the Bitcoin widget is placed.
+	const btcPlaced = statusWidgets.left.includes("btc") || statusWidgets.right.includes("btc");
+	const btc = useCryptoPrice("BTC-USD", btcPlaced);
 
 	const [windowLabel, setWindowLabel] = useState<string>("");
 	useEffect(() => {
@@ -1236,6 +1257,8 @@ function App() {
 
 	// Bloom mode state: 'music', 'calendar', 'command-center', 'announcement', 'shelf', or 'status'
 	const [bloomMode, setBloomMode] = useState<BloomMode>("status");
+	// Week rows of the month the calendar is showing; it sizes the notch.
+	const [calendarRows, setCalendarRows] = useState(currentMonthRows);
 
 	// Shelf: files and selected text stashed in the notch via drag-and-drop.
 	// Files are stored as plain paths (references, never copies). Session-scoped
@@ -1497,11 +1520,14 @@ function App() {
 		setBloomMode((prev) =>
 			prev === "music" ||
 			prev === "command-center" ||
+			prev === "writer" ||
 			prev === "calendar" ||
 			prev === "status" ||
 			prev === "shelf" ||
 			prev === "wifi" ||
-			prev === "bluetooth"
+			prev === "bluetooth" ||
+			prev === "audio-output" ||
+			prev === "audio-input"
 				? restingModeRef.current
 				: prev
 		);
@@ -2190,9 +2216,6 @@ function App() {
 				setIsMuted(state.is_muted);
 			})
 			.catch(() => {});
-		invoke<number>("get_brightness")
-			.then(setCurrentBrightness)
-			.catch(() => {});
 
 		// Poll battery saver state every 5s (since we can't listen for changes)
 		const interval = setInterval(() => {
@@ -2234,16 +2257,6 @@ function App() {
 		fetchMetrics();
 		const interval = setInterval(fetchMetrics, 3000);
 		return () => clearInterval(interval);
-	}, []);
-
-	// Listen for brightness changes
-	useEffect(() => {
-		const unlisten = listen<{ brightness: number }>("brightness-change", (event) => {
-			setCurrentBrightness(event.payload.brightness);
-		});
-		return () => {
-			unlisten.then((fn) => fn());
-		};
 	}, []);
 
 	// Native Windows Media Controls - Listen for updates from background worker
@@ -2469,18 +2482,50 @@ function App() {
 		}
 	}, []);
 
-	// Brightness change with throttling
-	const sendBrightness = useTrailingThrottle((newVal: number) => {
-		invoke("set_brightness", { brightness: newVal }).catch(() => {});
+	// Microphone gain change with throttling
+	const sendMicLevel = useTrailingThrottle((level: number) => {
+		invoke("set_mic_level", { level }).catch(() => {});
 	}, 50);
 
-	const handleBrightnessChange = useCallback(
-		(newVal: number) => {
-			setCurrentBrightness(newVal);
-			sendBrightness(newVal);
+	const handleMicLevelChange = useCallback(
+		(level: number) => {
+			setMic((m) => (m ? { ...m, level } : m));
+			sendMicLevel(level);
 		},
-		[sendBrightness]
+		[sendMicLevel]
 	);
+
+	// Re-reads the default devices and the microphone's level: on opening the
+	// controls, and after the default device is switched.
+	const refreshAudioControls = useCallback(() => {
+		invoke<MicState>("get_mic_state")
+			.then(setMic)
+			.catch(() => setMic(null));
+		invoke<{ name: string; is_default: boolean }[]>("audio_list_devices", { kind: "output" })
+			.then((list) => setOutputName(list.find((d) => d.is_default)?.name ?? null))
+			.catch(() => setOutputName(null));
+		invoke<{ name: string; is_default: boolean }[]>("audio_list_devices", { kind: "input" })
+			.then((list) => setInputName(list.find((d) => d.is_default)?.name ?? null))
+			.catch(() => setInputName(null));
+	}, []);
+
+	const refreshNetwork = useCallback(() => {
+		invoke<NetworkStatus>("get_network_status")
+			.then(setNetwork)
+			.catch(() => setNetwork(null));
+	}, []);
+
+	// Keep the LAN tile and the audio controls fresh while the controls are open.
+	useEffect(() => {
+		if (bloomMode !== "command-center") return;
+		refreshAudioControls();
+		refreshNetwork();
+		const interval = setInterval(() => {
+			refreshAudioControls();
+			refreshNetwork();
+		}, 5000);
+		return () => clearInterval(interval);
+	}, [bloomMode, refreshAudioControls, refreshNetwork]);
 
 	// Open system tray (unhide taskbar and invoke Win+B)
 	const openSystemTray = useCallback(async (e: React.MouseEvent) => {
@@ -2507,37 +2552,17 @@ function App() {
 		setBloomMode("wifi");
 	}, []);
 
-	const toggleDockModeSetting = useCallback(
-		async (e: React.MouseEvent) => {
-			e.stopPropagation();
-			const nextMode = dockMode === "fixed" ? "smart" : dockMode === "smart" ? "peek" : "fixed";
-			setDockMode(nextMode);
-			localStorage.setItem("bloom-dock-mode", nextMode);
-			invoke("save_setting", { key: "bloom-dock-mode", value: nextMode }).catch(console.error);
-			try {
-				await invoke("change_dock_mode", { mode: nextMode });
-			} catch (err) {
-				console.error("Failed to change dock mode:", err);
-			}
-		},
-		[dockMode]
-	);
+	// The LAN tile opens the classic adapters panel; its right-click keeps the
+	// Wi-Fi networks view reachable.
+	const openNetworkConnections = useCallback((e: React.MouseEvent) => {
+		e.stopPropagation();
+		invoke("open_network_connections").catch(console.error);
+	}, []);
 
-	const toggleNotchModeSetting = useCallback(
-		async (e: React.MouseEvent) => {
-			e.stopPropagation();
-			const nextMode = notchMode === "fixed" ? "smart" : notchMode === "smart" ? "peek" : "fixed";
-			setNotchMode(nextMode);
-			localStorage.setItem("bloom-notch-mode", nextMode);
-			invoke("save_setting", { key: "bloom-notch-mode", value: nextMode }).catch(console.error);
-			try {
-				await invoke("change_notch_mode", { mode: nextMode });
-			} catch (err) {
-				console.error("Failed to change notch mode:", err);
-			}
-		},
-		[notchMode]
-	);
+	const openAudioPanel = (kind: "output" | "input") => (e: React.MouseEvent) => {
+		e.stopPropagation();
+		setBloomMode(kind === "output" ? "audio-output" : "audio-input");
+	};
 
 	const handleBluetoothRightClick = useCallback((e: React.MouseEvent) => {
 		e.preventDefault();
@@ -2688,6 +2713,22 @@ function App() {
 						</span>
 					</>
 				);
+			case "btc": {
+				if (btc === null) return null;
+				const change = btc.open24h > 0 ? ((btc.price - btc.open24h) / btc.open24h) * 100 : 0;
+				const usd = (n: number) =>
+					`$${n.toLocaleString("en-US", { maximumFractionDigits: n >= 1000 ? 0 : 2 })}`;
+				return statusWidget(
+					"btc",
+					`Bitcoin ${usd(btc.price)} · 24h ${change >= 0 ? "+" : ""}${change.toFixed(2)}% · H ${usd(btc.high24h)} · L ${usd(btc.low24h)}`,
+					<>
+						<Bitcoin size={12} strokeWidth={2} />
+						<span className="label" style={{ color: change >= 0 ? "#4ade80" : "#f87171" }}>
+							${(btc.price / 1000).toFixed(1)}K
+						</span>
+					</>
+				);
+			}
 			default:
 				return null;
 		}
@@ -2717,7 +2758,14 @@ function App() {
 		if (isCalendarMode) return 480;
 		if (bloomMode === "shelf") return 380;
 		if (bloomMode === "command-center" && isOpen) return 350;
-		if (bloomMode === "wifi" || bloomMode === "bluetooth") return 350;
+		if (bloomMode === "writer" && isOpen) return 400;
+		if (
+			bloomMode === "wifi" ||
+			bloomMode === "bluetooth" ||
+			bloomMode === "audio-output" ||
+			bloomMode === "audio-input"
+		)
+			return 350;
 		if (showMusicOnStatusHover) {
 			return 170 + (settingsVisualizerEnabled ? 30 : 0);
 		}
@@ -2746,7 +2794,7 @@ function App() {
 			return announcement.url ? 168 : 148;
 		}
 		// Sized to the calendar's week-row count plus the timer's fixed content.
-		if (bloomMode === "calendar") return calendarMonthRows >= 6 ? 305 : 273;
+		if (bloomMode === "calendar") return calendarRows >= 6 ? 305 : 273;
 		// Shelf expands on mode alone (no hover needed: there is no cursor
 		// hover during an OS drag) and is sized to exactly one row of tiles,
 		// plus room for the scrollbar once the tiles overflow it.
@@ -2755,7 +2803,14 @@ function App() {
 			return shelfOverflowing ? 190 : 176;
 		}
 		if (bloomMode === "command-center") return isOpen ? 230 : 36;
-		if (bloomMode === "wifi" || bloomMode === "bluetooth") return 300;
+		if (bloomMode === "writer") return isOpen ? 262 : 36;
+		if (
+			bloomMode === "wifi" ||
+			bloomMode === "bluetooth" ||
+			bloomMode === "audio-output" ||
+			bloomMode === "audio-input"
+		)
+			return 300;
 		if (bloomMode === "status") return 36;
 		if (isMusicMode && isOpen) {
 			const hasProgressBar = (mediaInfo.duration_ms ?? 0) > 0;
@@ -3504,6 +3559,59 @@ function App() {
 									)}
 								</AnimatePresence>
 
+								{/* Sound output devices, opened from the controls panel */}
+								<AnimatePresence>
+									{bloomMode === "audio-output" && (
+										<motion.div
+											key="audio-output-view"
+											initial={{ opacity: 0 }}
+											animate={{ opacity: 1 }}
+											exit={{ opacity: 0, filter: "blur(4px)", transition: { duration: 0.1 } }}
+											transition={{ type: "spring", stiffness: 400, damping: 30 }}
+										>
+											<AudioDevicePanel
+												kind="output"
+												onBack={() => setBloomMode("command-center")}
+												onChanged={refreshAudioControls}
+											/>
+										</motion.div>
+									)}
+								</AnimatePresence>
+
+								{/* Microphone devices, opened from the controls panel */}
+								<AnimatePresence>
+									{bloomMode === "audio-input" && (
+										<motion.div
+											key="audio-input-view"
+											initial={{ opacity: 0 }}
+											animate={{ opacity: 1 }}
+											exit={{ opacity: 0, filter: "blur(4px)", transition: { duration: 0.1 } }}
+											transition={{ type: "spring", stiffness: 400, damping: 30 }}
+										>
+											<AudioDevicePanel
+												kind="input"
+												onBack={() => setBloomMode("command-center")}
+												onChanged={refreshAudioControls}
+											/>
+										</motion.div>
+									)}
+								</AnimatePresence>
+
+								{/* Writer: fix spelling and translate */}
+								<AnimatePresence>
+									{bloomMode === "writer" && (
+										<motion.div
+											key="writer-view"
+											initial={{ opacity: 0 }}
+											animate={{ opacity: 1 }}
+											exit={{ opacity: 0, filter: "blur(4px)", transition: { duration: 0.1 } }}
+											transition={{ type: "spring", stiffness: 400, damping: 30 }}
+										>
+											<WriterPanel onPinChange={setNotchPinned} />
+										</motion.div>
+									)}
+								</AnimatePresence>
+
 								{/* Command Center Panel */}
 								<AnimatePresence>
 									{bloomMode === "command-center" && (
@@ -3517,62 +3625,34 @@ function App() {
 										>
 											{/* Pills Grid */}
 											<div className="cc-pills-grid">
-												{/* Wi-Fi Pill */}
+												{/* LAN Pill: click opens the adapters panel, right-click the Wi-Fi networks */}
 												<div
-													className={`cc-pill-tile ${wifiEnabled ? "active" : ""}`}
-													onClick={(e) => {
-														e.stopPropagation();
-														toggleWifi();
-													}}
+													className={`cc-pill-tile ${network?.internet ? "active" : ""}`}
+													onClick={openNetworkConnections}
 													onContextMenu={handleWifiRightClick}
-													title="Left-click to toggle, Right-click for networks"
+													title="Click for network adapters, right-click for Wi-Fi networks"
 												>
 													<div className="cc-pill-icon-wrapper">
-														<WifiIcon enabled={wifiEnabled} connected={wifiConnected} />
+														<Network />
 													</div>
 													<div className="cc-pill-info">
-														<span className="cc-pill-title">Wi-Fi</span>
-														<span className="cc-pill-status">
-															{wifiStatus === null
-																? "…"
-																: !wifiEnabled
-																	? "Off"
-																	: wifiConnected
-																		? (wifiStatus?.ssid ?? "Connected")
-																		: "Not connected"}
-														</span>
+														<span className="cc-pill-title">LAN</span>
+														<span className="cc-pill-status">{lanStatusText(network)}</span>
 													</div>
-													<button
-														className="cc-pill-more"
-														aria-label="Wi-Fi networks"
-														title="Wi-Fi networks"
-														onClick={(e) => {
-															e.stopPropagation();
-															setBloomMode("wifi");
-														}}
-													>
-														<ChevronRight />
-													</button>
 												</div>
 
-												{/* Dock Mode Pill */}
+												{/* Sound Output Pill */}
 												<div
-													className={`cc-pill-tile ${dockMode === "fixed" ? "active" : ""}`}
-													onClick={toggleDockModeSetting}
-													title="Cycle dock mode: Fixed / Smart / Peek"
+													className="cc-pill-tile"
+													onClick={openAudioPanel("output")}
+													title="Choose the sound output device"
 												>
 													<div className="cc-pill-icon-wrapper">
-														<DockIcon />
+														<Volume2 />
 													</div>
 													<div className="cc-pill-info">
-														<span className="cc-pill-title">Dock Mode</span>
-														<span className="cc-pill-status">
-															{dockMode === "fixed"
-																? "Fixed"
-																: dockMode === "smart"
-																	? "Smart"
-																	: "Peek"}
-														</span>
+														<span className="cc-pill-title">Output</span>
+														<span className="cc-pill-status">{outputName ?? "…"}</span>
 													</div>
 												</div>
 
@@ -3614,24 +3694,18 @@ function App() {
 													</button>
 												</div>
 
-												{/* Notch Mode Pill */}
+												{/* Microphone Pill */}
 												<div
-													className={`cc-pill-tile ${notchMode === "fixed" ? "active" : ""}`}
-													onClick={toggleNotchModeSetting}
-													title="Cycle notch mode: Fixed / Smart / Peek"
+													className="cc-pill-tile"
+													onClick={openAudioPanel("input")}
+													title="Choose the microphone"
 												>
 													<div className="cc-pill-icon-wrapper">
-														<NotchIcon />
+														<Mic />
 													</div>
 													<div className="cc-pill-info">
-														<span className="cc-pill-title">Notch Mode</span>
-														<span className="cc-pill-status">
-															{notchMode === "fixed"
-																? "Fixed"
-																: notchMode === "smart"
-																	? "Smart"
-																	: "Peek"}
-														</span>
+														<span className="cc-pill-title">Microphone</span>
+														<span className="cc-pill-status">{inputName ?? "No microphone"}</span>
 													</div>
 												</div>
 											</div>
@@ -3730,11 +3804,11 @@ function App() {
 													</span>
 												</div>
 
-												{/* Brightness Slider */}
+												{/* Microphone Gain Slider */}
 												<div className="cc-classic-slider-row">
 													<div className="cc-classic-slider-label">
-														<BrightnessLowIcon />
-														<span>Brightness</span>
+														<Mic size={12} style={{ opacity: 0.5 }} />
+														<span>Mic</span>
 													</div>
 													<div className="cc-classic-slider-track">
 														<input
@@ -3742,18 +3816,21 @@ function App() {
 															min="0"
 															max="100"
 															step="1"
-															value={currentBrightness}
-															onChange={(e) => handleBrightnessChange(parseInt(e.target.value))}
+															disabled={mic === null}
+															value={Math.round((mic?.level ?? 0) * 100)}
+															onChange={(e) => handleMicLevelChange(parseInt(e.target.value) / 100)}
 															onPointerDown={(e) => e.stopPropagation()}
 															onClick={(e) => e.stopPropagation()}
 															className="cc-classic-input"
 														/>
 														<div
 															className="cc-classic-fill"
-															style={{ width: `${currentBrightness}%` }}
+															style={{ width: `${Math.round((mic?.level ?? 0) * 100)}%` }}
 														/>
 													</div>
-													<span className="cc-classic-percentage">{currentBrightness}%</span>
+													<span className="cc-classic-percentage">
+														{Math.round((mic?.level ?? 0) * 100)}%
+													</span>
 												</div>
 											</div>
 										</motion.div>
@@ -3817,7 +3894,7 @@ function App() {
 											transition={{ type: "spring", stiffness: 400, damping: 30 }}
 										>
 											<div className="calendar-column">
-												<Calendar />
+												<Calendar onRowsChange={setCalendarRows} />
 											</div>
 
 											<div className="timer-column">
@@ -4106,8 +4183,10 @@ function App() {
 	);
 }
 
-function Calendar() {
-	const [date] = useState(new Date());
+function Calendar({ onRowsChange }: { onRowsChange: (rows: number) => void }) {
+	const [date, setDate] = useState(new Date());
+	const shiftMonth = (delta: number) =>
+		setDate((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1));
 
 	const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
 	const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
@@ -4138,12 +4217,23 @@ function Calendar() {
 		);
 	}
 
+	useEffect(() => {
+		onRowsChange(monthRows(currentYear, currentMonth));
+		return () => onRowsChange(currentMonthRows());
+	}, [currentYear, currentMonth, onRowsChange]);
+
 	return (
 		<div className="calendar-container">
 			<div className="calendar-header">
 				<span className="month-year">
 					{monthName} {currentYear}
 				</span>
+				<button className="calendar-nav" aria-label="Previous month" onClick={() => shiftMonth(-1)}>
+					<ChevronLeft size={14} />
+				</button>
+				<button className="calendar-nav" aria-label="Next month" onClick={() => shiftMonth(1)}>
+					<ChevronRight size={14} />
+				</button>
 			</div>
 			<div className="calendar-grid">
 				{["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
@@ -4193,24 +4283,6 @@ function SettingsIcon() {
 	);
 }
 
-function BrightnessLowIcon() {
-	return (
-		<svg
-			width="12"
-			height="12"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="2"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			style={{ opacity: 0.5 }}
-		>
-			<circle cx="12" cy="12" r="5" fill="currentColor" />
-		</svg>
-	);
-}
-
 function MoonIcon() {
 	return (
 		<svg
@@ -4224,45 +4296,6 @@ function MoonIcon() {
 			strokeLinejoin="round"
 		>
 			<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-		</svg>
-	);
-}
-
-function DockIcon() {
-	return (
-		<svg
-			width="18"
-			height="18"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="2.5"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		>
-			<rect x="2" y="14" width="20" height="8" rx="2" />
-			<line x1="6" y1="18" x2="6.01" y2="18" strokeWidth="3.5" strokeLinecap="round" />
-			<line x1="10" y1="18" x2="10.01" y2="18" strokeWidth="3.5" strokeLinecap="round" />
-			<line x1="14" y1="18" x2="14.01" y2="18" strokeWidth="3.5" strokeLinecap="round" />
-			<line x1="18" y1="18" x2="18.01" y2="18" strokeWidth="3.5" strokeLinecap="round" />
-		</svg>
-	);
-}
-
-function NotchIcon() {
-	return (
-		<svg
-			width="18"
-			height="18"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="2.5"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		>
-			<path d="M4 3h16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
-			<path d="M9 9v4a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V9" />
 		</svg>
 	);
 }

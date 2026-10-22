@@ -1,0 +1,76 @@
+/* The notch's writer panel: fix spelling and translate. Builds on the shared
+   .qp layout and .qp-* controls from QuickPanel.css. */
+.wp {
+	gap: 6px;
+}
+
+.wp-text {
+	flex: none;
+	height: 62px;
+	padding: 6px 9px;
+	resize: none;
+	line-height: 1.35;
+}
+
+.wp-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex: none;
+}
+
+.wp-spacer {
+	flex: 1;
+}
+
+.wp-lang {
+	min-width: 0;
+	max-width: 110px;
+	gap: 4px;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.wp-result {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	align-items: flex-start;
+	padding: 6px 9px;
+	box-sizing: border-box;
+	border-radius: 8px;
+	background: var(--bloom-group-bg, rgba(255, 255, 255, 0.04));
+	border: 1px solid var(--bloom-border, rgba(255, 255, 255, 0.06));
+	overflow: hidden;
+}
+
+.wp-result-text {
+	flex: 1;
+	margin: 0;
+	max-height: 100%;
+	overflow-y: auto;
+	line-height: 1.35;
+	white-space: pre-wrap;
+	word-break: break-word;
+	user-select: text;
+}
+
+.wp-result-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin-left: 6px;
+	flex: none;
+}
+
+.wp-note {
+	flex: none;
+	min-height: 12px;
+	padding: 0 2px;
+}
+
+.wp-languages {
+	flex: 1;
+	min-height: 0;
+}

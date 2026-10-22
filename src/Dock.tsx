@@ -1952,6 +1952,18 @@ const Dock = memo(function Dock() {
 											? "all windows"
 											: "window"}
 									</div>
+									<div
+										className="menu-item quit"
+										onClick={async () => {
+											const app = contextMenu.app;
+											const hwnds =
+												app?.all_hwnds?.map(([hwnd]) => hwnd) ?? (app?.hwnd ? [app.hwnd] : []);
+											await invoke("kill_process", { hwnds });
+											closeMenu();
+										}}
+									>
+										End process
+									</div>
 								</>
 							)}
 						</>

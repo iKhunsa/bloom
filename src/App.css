@@ -740,7 +740,37 @@ img {
 }
 
 .calendar-header {
+	display: flex;
+	align-items: center;
+	gap: 4px;
 	margin-bottom: 8px;
+}
+
+.month-year {
+	margin-right: auto;
+}
+
+.calendar-nav {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	color: inherit;
+	opacity: 0.5;
+	cursor: pointer;
+	transition:
+		background 0.2s ease,
+		opacity 0.2s ease;
+}
+
+.calendar-nav:hover {
+	background: rgba(255, 255, 255, 0.12);
+	opacity: 1;
 }
 
 .month-year {

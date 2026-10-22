@@ -3115,6 +3115,57 @@ pub async fn close_window(hwnd: isize) {
     .unwrap_or_default();
 }
 
+/// Force-kills the processes owning the given windows ("End task"). Skips Bloom
+/// itself and explorer.exe, which hosts the shell and every File Explorer window.
+#[tauri::command]
+pub async fn kill_process(hwnds: Vec<isize>) {
+    tauri::async_runtime::spawn_blocking(move || unsafe {
+        use windows::Win32::Foundation::CloseHandle;
+        use windows::Win32::System::Threading::{
+            GetCurrentProcessId, OpenProcess, QueryFullProcessImageNameW, TerminateProcess,
+            PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE,
+        };
+        use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
+
+        let own = GetCurrentProcessId();
+        let mut pids: Vec<u32> = Vec::new();
+        for hwnd in hwnds {
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(HWND(hwnd as *mut _), Some(&mut pid));
+            if pid != 0 && pid != own && !pids.contains(&pid) {
+                pids.push(pid);
+            }
+        }
+        for pid in pids {
+            let Ok(handle) = OpenProcess(
+                PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION,
+                false,
+                pid,
+            ) else {
+                continue;
+            };
+            let mut buf = [0u16; 520];
+            let mut len = buf.len() as u32;
+            let is_shell = QueryFullProcessImageNameW(
+                handle,
+                PROCESS_NAME_WIN32,
+                windows::core::PWSTR(buf.as_mut_ptr()),
+                &mut len,
+            )
+            .is_ok()
+                && String::from_utf16_lossy(&buf[..len as usize])
+                    .to_lowercase()
+                    .ends_with("\\explorer.exe");
+            if !is_shell {
+                let _ = TerminateProcess(handle, 1);
+            }
+            let _ = CloseHandle(handle);
+        }
+    })
+    .await
+    .unwrap_or_default();
+}
+
 fn re_register_appbars(app: &AppHandle, settings: &HashMap<String, serde_json::Value>) {
     // Reconcile the notch from the live mode: a scale change alters the
     // reserved strip height, and peek/smart must never hold a reservation.

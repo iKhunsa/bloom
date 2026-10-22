@@ -19,6 +19,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+	Bitcoin,
 	CloudSun,
 	BatteryFull,
 	Cpu,
@@ -50,7 +51,8 @@ const WIDGET_DEFS: WidgetDef[] = [
 	{ id: "cpu", label: "CPU", icon: Cpu, color: "#f97316" },
 	{ id: "ram", label: "RAM", icon: MemoryStick, color: "#a78bfa" },
 	{ id: "disk", label: "Disk", icon: HardDrive, color: "#38bdf8" },
-	{ id: "net", label: "Net", icon: ArrowUpDown, color: "#2dd4bf" }
+	{ id: "net", label: "Net", icon: ArrowUpDown, color: "#2dd4bf" },
+	{ id: "btc", label: "Bitcoin", icon: Bitcoin, color: "#f7931a" }
 ];
 
 const DEFAULT_CONFIG: WidgetConfig = {

@@ -1,10 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod audio_devices;
 mod battery;
 mod bluetooth;
 mod commands;
 mod diagnostics;
 mod dock_extras;
+mod network;
 mod services;
 mod shelf;
 mod shelf_preview;
@@ -163,6 +165,7 @@ fn main() {
             focus_window,
             focus_app_windows,
             close_window,
+            kill_process,
             quit_bloom,
             restart_bloom,
             get_volume,
@@ -214,7 +217,13 @@ fn main() {
             bluetooth::bluetooth_discovery,
             bluetooth::bluetooth_pair,
             bluetooth::bluetooth_pairing_respond,
-            bluetooth::bluetooth_unpair
+            bluetooth::bluetooth_unpair,
+            audio_devices::audio_list_devices,
+            audio_devices::audio_set_default_device,
+            audio_devices::get_mic_state,
+            audio_devices::set_mic_level,
+            network::get_network_status,
+            network::open_network_connections
         ])
         .setup(|app| {
             init_taskbar_marker(app.handle());

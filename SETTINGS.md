@@ -109,7 +109,7 @@ Edit `settings.json` with any text editor while Bloom is running. Changes are ap
 
 | Key                    | Type        | Default                                    | Description                                                                                                 |
 | ---------------------- | ----------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `bloom-status-widgets` | JSON string | `{"left":["weather"],"right":["battery"]}` | Widget layout in collapsed notch. Available: `"weather"`, `"battery"`, `"cpu"`, `"ram"`, `"disk"`, `"net"`. |
+| `bloom-status-widgets` | JSON string | `{"left":["weather"],"right":["battery"]}` | Widget layout in collapsed notch. Available: `"weather"`, `"battery"`, `"cpu"`, `"ram"`, `"disk"`, `"net"`, `"btc"`. |
 
 Example:
 
