@@ -1,0 +1,148 @@
+/* Bitcoin chart opened from the BTC widget. Sits below the notch's 36px strip. */
+.btcp {
+	position: absolute;
+	top: 36px;
+	left: 0;
+	width: 100%;
+	height: calc(100% - 36px);
+	box-sizing: border-box;
+	z-index: 2;
+	padding: 4px 16px 18px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	color: var(--bloom-text, white);
+	border-radius: 0 0 18px 18px;
+	overflow: hidden;
+}
+
+.btcp-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.btcp-price {
+	display: flex;
+	flex-direction: column;
+	line-height: 1.15;
+	min-width: 0;
+}
+
+.btcp-value {
+	font-size: 20px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.btcp-change {
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.btcp-when {
+	font-size: 10px;
+	color: var(--bloom-text-muted, rgba(255, 255, 255, 0.55));
+}
+
+.btcp-tabs {
+	display: flex;
+	gap: 2px;
+	padding: 2px;
+	border-radius: 9px;
+	background: var(--bloom-group-bg, rgba(255, 255, 255, 0.06));
+}
+
+.btcp-tabs button {
+	min-width: 28px;
+	height: 22px;
+	padding: 0 7px;
+	border: none;
+	border-radius: 7px;
+	background: transparent;
+	color: var(--bloom-text-muted, rgba(255, 255, 255, 0.6));
+	font: inherit;
+	font-size: 10.5px;
+	font-weight: 600;
+	cursor: pointer;
+	transition:
+		background 0.15s ease,
+		color 0.15s ease;
+}
+
+.btcp-tabs button:hover {
+	color: var(--bloom-text, white);
+}
+
+.btcp-tabs button.active {
+	background: var(--bloom-text, white);
+	color: var(--bloom-bg-expanded, black);
+}
+
+.btcp-chart {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+}
+
+.btcp-chart svg {
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	cursor: crosshair;
+}
+
+.btcp-line {
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.6;
+	stroke-linejoin: round;
+	stroke-linecap: round;
+	vector-effect: non-scaling-stroke;
+}
+
+.btcp-cursor {
+	stroke: var(--bloom-text, white);
+	stroke-opacity: 0.35;
+	stroke-width: 1;
+	stroke-dasharray: 2 3;
+	vector-effect: non-scaling-stroke;
+}
+
+.btcp-dot {
+	position: absolute;
+	width: 8px;
+	height: 8px;
+	margin: -4px 0 0 -4px;
+	border-radius: 50%;
+	pointer-events: none;
+	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.4);
+}
+
+.btcp-note {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 11px;
+	color: var(--bloom-text-muted, rgba(255, 255, 255, 0.55));
+}
+
+.btcp-spin {
+	animation: btcp-spin 0.9s linear infinite;
+}
+
+@keyframes btcp-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.btcp-foot {
+	display: flex;
+	justify-content: space-between;
+	font-size: 9.5px;
+	color: var(--bloom-text-muted, rgba(255, 255, 255, 0.55));
+}

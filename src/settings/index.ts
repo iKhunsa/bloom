@@ -4,6 +4,7 @@ export { GeneralTab } from "./GeneralTab";
 export { AppearanceTab } from "./AppearanceTab";
 export { NotchTab } from "./NotchTab";
 export { DockTab } from "./DockTab";
+export { LaunchpadTab } from "./LaunchpadTab";
 export { OverlaysTab } from "./OverlaysTab";
 export { AboutTab } from "./AboutTab";
 export type { WidgetConfig, SettingsTab, SettingRowProps } from "./types";

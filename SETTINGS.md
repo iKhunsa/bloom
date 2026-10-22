@@ -31,6 +31,7 @@ Edit `settings.json` with any text editor while Bloom is running. Changes are ap
 | `bloom-dock-task-view`             | `"true"` / `"false"`             | `"false"`     | Show a Task View button beside Start that opens Task View, like the taskbar's. Right-click it to hide it again.                                                                  |
 | `bloom-dock-adaptive`              | `"true"` / `"false"`             | `"false"`     | Fixed dock only. Stretch the dock to full width like a traditional taskbar while a window is maximized, and contract back when it's restored.                                    |
 | `bloom-launcher-enabled`           | `"true"` / `"false"`             | `"true"`      | When the taskbar is replaced, a lone Win tap and the dock's Start button open Bloom's full-screen app launcher (Launchpad-style grid) instead of the Windows Start menu. Off restores the Start menu. |
+| `bloom-launcher-layout` | JSON string | `{"folders":[],"icons":{},"visibility":{},"onlyUsed":true,"usedDays":180,"pages":[]}` | Launchpad layout, edited from Settings > Launchpad or the launcher's right-click menu. `pages` holds the arrangement made by dragging (item keys per page); `folders` holds `{id,name,apps[]}`; `icons` maps an app path to a library icon id or `"windows"`; `visibility` maps an app path to `"show"` or `"hide"`; `pages` holds the pages as arranged by dragging (item keys); with `onlyUsed` the grid lists pinned, default Windows and recently used apps (within `usedDays`, 0 = any time) until you search. |
 | `bloom-dock-win-number-enabled`    | `"true"` / `"false"`             | `"true"`      | When the taskbar is replaced, Win+1 through Win+9 activate the matching pinned dock app (focus/minimize if running, launch otherwise) instead of the native taskbar slots.       |
 | `bloom-dock-extras-position`       | `"off"` / `"left"` / `"right"`   | `"off"`       | Show a dock extras section with drives, folders and the Recycle Bin beside the app icons, on the left or right side of the dock.                                                 |
 | `bloom-dock-extras-drives`         | `"true"` / `"false"`             | `"true"`      | Show fixed, removable (with media) and connected mapped network drives in the dock extras. Empty card readers and unloaded discs are hidden.                                     |
@@ -110,7 +111,7 @@ Edit `settings.json` with any text editor while Bloom is running. Changes are ap
 
 | Key                    | Type        | Default                                    | Description                                                                                                 |
 | ---------------------- | ----------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `bloom-status-widgets` | JSON string | `{"left":["weather"],"right":["battery"]}` | Widget layout in collapsed notch. Available: `"weather"`, `"battery"`, `"cpu"`, `"ram"`, `"disk"`, `"net"`, `"gpu"`, `"btc"`. |
+| `bloom-status-widgets` | JSON string | `{"left":["weather"],"right":["battery"]}` | Widget layout in collapsed notch. Available: `"weather"`, `"battery"`, `"cpu"`, `"ram"`, `"disk"`, `"net"`, `"gpu"`, `"btc"` (click it for a chart with 1H to 1Y time frames). |
 
 Example:
 

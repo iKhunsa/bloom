@@ -126,7 +126,7 @@ fn win_key_physically_down() -> bool {
 /// Swallowing a Win+Number combo would look exactly like that on Win release,
 /// so a tap of an unassigned key is injected first — the same trick as
 /// AutoHotkey's `#MenuMaskKey` — making the shell treat Win as a real modifier.
-fn send_start_menu_mask() {
+pub fn send_start_menu_mask() {
     use windows::Win32::UI::Input::KeyboardAndMouse::{
         SendInput, INPUT, INPUT_0, KEYBDINPUT, KEYEVENTF_KEYUP, VIRTUAL_KEY,
     };

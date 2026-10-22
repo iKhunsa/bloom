@@ -228,6 +228,9 @@ fn main() {
             gpu::get_gpu_usage,
             launcher::toggle_launcher,
             launcher::hide_launcher,
+            launcher::mask_win_key,
+            launcher::get_launcher_wallpaper,
+            launcher::get_launcher_usage,
             network::get_network_status,
             network::open_network_connections
         ])
@@ -414,6 +417,7 @@ fn main() {
                 {
                     let _ = window_vibrancy::apply_acrylic(&launcher_win, Some((12, 14, 34, 120)));
                 }
+                launcher::setup(app.handle());
                 let win_clone = launcher_win.clone();
                 launcher_win.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = event {

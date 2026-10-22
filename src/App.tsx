@@ -42,6 +42,7 @@ import { BluetoothPanel } from "./components/BluetoothPanel";
 import { AudioDevicePanel } from "./components/AudioDevicePanel";
 import { WriterPanel } from "./components/WriterPanel";
 import { MetricsPanel, METRIC_HISTORY } from "./components/MetricsPanel";
+import { BtcPanel } from "./components/BtcPanel";
 import { useCryptoPrice } from "./hooks/useCryptoPrice";
 import {
 	Cpu,
@@ -453,6 +454,7 @@ type BloomMode =
 	| "command-center"
 	| "writer"
 	| "metrics"
+	| "btc-chart"
 	| "announcement"
 	| "status"
 	| "shelf"
@@ -1537,6 +1539,7 @@ function App() {
 			prev === "command-center" ||
 			prev === "writer" ||
 			prev === "metrics" ||
+			prev === "btc-chart" ||
 			prev === "calendar" ||
 			prev === "status" ||
 			prev === "shelf" ||
@@ -2020,7 +2023,7 @@ function App() {
 	};
 
 	// Expands the notch into a panel, or into an activity's own view.
-	const openNotch = (view: NotchPanel | "music" | "shelf" | "metrics") => {
+	const openNotch = (view: NotchPanel | "music" | "shelf" | "metrics" | "btc-chart") => {
 		if (bloomMode === "announcement") return;
 		setIsOpen(true);
 		setBloomMode(view);
@@ -2817,7 +2820,9 @@ function App() {
 						) : (
 							<ArrowDown size={10} strokeWidth={3} style={{ color: "#f87171" }} />
 						)}
-					</>
+					</>,
+					undefined,
+					() => openNotch("btc-chart")
 				);
 			}
 			default:
@@ -2851,6 +2856,7 @@ function App() {
 		if (bloomMode === "command-center" && isOpen) return 350;
 		if (bloomMode === "writer" && isOpen) return 400;
 		if (bloomMode === "metrics") return 380;
+		if (bloomMode === "btc-chart") return 420;
 		if (
 			bloomMode === "wifi" ||
 			bloomMode === "bluetooth" ||
@@ -2897,6 +2903,7 @@ function App() {
 		if (bloomMode === "command-center") return isOpen ? 230 : 36;
 		if (bloomMode === "writer") return isOpen ? 272 : 36;
 		if (bloomMode === "metrics") return 150;
+		if (bloomMode === "btc-chart") return 232;
 		if (
 			bloomMode === "wifi" ||
 			bloomMode === "bluetooth" ||
@@ -3701,6 +3708,21 @@ function App() {
 											transition={{ type: "spring", stiffness: 400, damping: 30 }}
 										>
 											<WriterPanel onPinChange={setNotchPinned} />
+										</motion.div>
+									)}
+								</AnimatePresence>
+
+								{/* Bitcoin chart with its time frames, opened from the BTC widget */}
+								<AnimatePresence>
+									{bloomMode === "btc-chart" && (
+										<motion.div
+											key="btc-chart-view"
+											initial={{ opacity: 0 }}
+											animate={{ opacity: 1 }}
+											exit={{ opacity: 0, filter: "blur(4px)", transition: { duration: 0.1 } }}
+											transition={{ type: "spring", stiffness: 400, damping: 30 }}
+										>
+											<BtcPanel live={btc?.price ?? null} />
 										</motion.div>
 									)}
 								</AnimatePresence>

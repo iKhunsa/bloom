@@ -1,6 +1,9 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, memo } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { invoke } from "@tauri-apps/api/core";
+import { autoIconId, iconUrl } from "./launcher/icons";
+import { exeStem } from "./launcher/apps";
+import { DEFAULT_LAYOUT, loadLayout, onLayoutChanged, type LauncherLayout } from "./launcher/store";
 import { listen } from "@tauri-apps/api/event";
 import "./Dock.css";
 import { EdgeSurface } from "./components/EdgeSurface";
@@ -216,6 +219,17 @@ const Dock = memo(function Dock() {
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [startupAnimating, setStartupAnimating] = useState(false);
 	const [customIcons, setCustomIcons] = useState<Record<string, string>>({});
+	// The launcher's macOS-style icons, so the dock matches it.
+	const [launcherLayout, setLauncherLayout] = useState<LauncherLayout>(DEFAULT_LAYOUT);
+	useEffect(() => {
+		void loadLayout().then(setLauncherLayout);
+		return onLayoutChanged(() => void loadLayout().then(setLauncherLayout));
+	}, []);
+	const macIcon = (app: AppInfo): string | undefined => {
+		const choice = launcherLayout.icons[app.path];
+		if (choice === "windows") return undefined;
+		return iconUrl(choice ?? autoIconId(app.name, exeStem(app)));
+	};
 	const [toast, setToast] = useState<string | null>(null);
 	const iconPickerTargetRef = useRef<string | null>(null);
 	const toastTimerRef = useRef<any>(null);
@@ -1504,6 +1518,7 @@ const Dock = memo(function Dock() {
 														const icon =
 															customIcons[cacheKey] ||
 															(allowPathFallback && customIcons[app.path]) ||
+															(!isHost && macIcon(app)) ||
 															iconsRef.current[cacheKey] ||
 															(allowPathFallback && iconsRef.current[app.path]) ||
 															app.icon;
@@ -1663,6 +1678,7 @@ const Dock = memo(function Dock() {
 												const icon =
 													customIcons[cacheKey] ||
 													(allowPathFallback && customIcons[app.path]) ||
+													(!isHost && macIcon(app)) ||
 													iconsRef.current[cacheKey] ||
 													(allowPathFallback && iconsRef.current[app.path]) ||
 													app.icon;

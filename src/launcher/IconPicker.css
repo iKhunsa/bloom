@@ -1,0 +1,203 @@
+/* Icon chooser: opened from the launcher's right-click menu and from Settings. */
+.ip-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 100;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(0, 0, 0, 0.35);
+	font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+}
+
+.ip {
+	width: min(560px, calc(100vw - 32px));
+	max-height: min(520px, calc(100vh - 32px));
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 16px;
+	box-sizing: border-box;
+	border-radius: 18px;
+	background: rgba(30, 32, 44, 0.94);
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+	color: #fff;
+}
+
+.ip-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.ip-title {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	font-size: 11px;
+	color: rgba(255, 255, 255, 0.6);
+}
+
+.ip-title strong {
+	font-size: 15px;
+	color: #fff;
+}
+
+.ip-close {
+	width: 28px;
+	height: 28px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.08);
+	color: inherit;
+	cursor: pointer;
+}
+
+.ip-close:hover {
+	background: rgba(255, 255, 255, 0.16);
+}
+
+.ip-special {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+}
+
+.ip-option {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 10px;
+	border: 1px solid transparent;
+	border-radius: 12px;
+	background: rgba(255, 255, 255, 0.06);
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.ip-option:hover {
+	background: rgba(255, 255, 255, 0.12);
+}
+
+.ip-option.selected,
+.ip-cell.selected {
+	border-color: #6ea8ff;
+	background: rgba(110, 168, 255, 0.18);
+}
+
+.ip-thumb {
+	flex: none;
+	width: 40px;
+	height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.1);
+	overflow: hidden;
+}
+
+.ip-thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+.ip-none {
+	font-weight: 700;
+	opacity: 0.6;
+}
+
+.ip-option-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.ip-option-text strong {
+	font-size: 13px;
+}
+
+.ip-option-text small {
+	font-size: 10.5px;
+	color: rgba(255, 255, 255, 0.55);
+}
+
+.ip-search {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 34px;
+	padding: 0 12px;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.08);
+	color: rgba(255, 255, 255, 0.7);
+}
+
+.ip-search input {
+	flex: 1;
+	min-width: 0;
+	border: none;
+	outline: none;
+	background: transparent;
+	color: #fff;
+	font: inherit;
+	font-size: 13px;
+}
+
+.ip-grid {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+	gap: 8px;
+	padding-right: 4px;
+}
+
+.ip-cell {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	padding: 8px 4px 6px;
+	border: 1px solid transparent;
+	border-radius: 12px;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+}
+
+.ip-cell:hover {
+	background: rgba(255, 255, 255, 0.1);
+}
+
+.ip-cell img {
+	width: 48px;
+	height: 48px;
+	object-fit: contain;
+	filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
+}
+
+.ip-cell span {
+	max-width: 100%;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-size: 10.5px;
+	color: rgba(255, 255, 255, 0.75);
+}
+
+.ip-empty {
+	grid-column: 1 / -1;
+	padding: 24px;
+	text-align: center;
+	color: rgba(255, 255, 255, 0.5);
+}

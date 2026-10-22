@@ -1,0 +1,144 @@
+/* Launchpad tab: folder names and the per-app list. */
+.lpt-input {
+	width: 140px;
+	height: 26px;
+	padding: 0 8px;
+	box-sizing: border-box;
+	border: 1px solid var(--border, rgba(255, 255, 255, 0.14));
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.06);
+	color: inherit;
+	font: inherit;
+	font-size: 12px;
+	outline: none;
+}
+
+.lpt-icon-btn {
+	width: 26px;
+	height: 26px;
+	margin-left: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	border-radius: 8px;
+	background: transparent;
+	color: #ff8a80;
+	cursor: pointer;
+}
+
+.lpt-icon-btn:hover {
+	background: rgba(255, 138, 128, 0.15);
+}
+
+.lpt-apps {
+	display: flex;
+	flex-direction: column;
+	padding: 6px 4px;
+}
+
+.lpt-search {
+	padding: 6px 8px 8px;
+}
+
+.lpt-search input {
+	width: 100%;
+	height: 30px;
+	padding: 0 12px;
+	box-sizing: border-box;
+	border: 1px solid var(--border, rgba(255, 255, 255, 0.14));
+	border-radius: 9px;
+	background: rgba(255, 255, 255, 0.06);
+	color: inherit;
+	font: inherit;
+	font-size: 12px;
+	outline: none;
+}
+
+.lpt-app {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 8px;
+	border-radius: 10px;
+}
+
+.lpt-app:hover {
+	background: rgba(255, 255, 255, 0.05);
+}
+
+.lpt-icon {
+	flex: none;
+	width: 34px;
+	height: 34px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: none;
+	border-radius: 9px;
+	background: rgba(255, 255, 255, 0.08);
+	color: inherit;
+	font-weight: 700;
+	cursor: pointer;
+	overflow: hidden;
+}
+
+.lpt-icon img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+.lpt-app-info {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	line-height: 1.25;
+}
+
+.lpt-app-name {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-size: 12.5px;
+}
+
+.lpt-app-state {
+	font-size: 10.5px;
+	opacity: 0.5;
+}
+
+.lpt-app-state.on {
+	opacity: 0.85;
+	color: #4ade80;
+}
+
+.lpt-select {
+	flex: none;
+	width: 104px;
+}
+
+.lpt-more {
+	margin: 6px 8px 4px;
+	height: 30px;
+	border: none;
+	border-radius: 9px;
+	background: rgba(255, 255, 255, 0.08);
+	color: inherit;
+	font: inherit;
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.lpt-more:hover {
+	background: rgba(255, 255, 255, 0.14);
+}
+
+.lpt-empty {
+	padding: 20px;
+	text-align: center;
+	opacity: 0.55;
+	font-size: 12px;
+}

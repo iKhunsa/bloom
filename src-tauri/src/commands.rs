@@ -579,7 +579,10 @@ const START_TOGGLE_DEBOUNCE_MS: i64 = 80;
 /// A zero-length tap is dropped by the shell and never opens Start.
 const START_WIN_KEY_HOLD_MS: u64 = 40;
 
-fn send_key_tap(vk: windows::Win32::UI::Input::KeyboardAndMouse::VIRTUAL_KEY, hold_ms: u64) {
+pub(crate) fn send_key_tap(
+    vk: windows::Win32::UI::Input::KeyboardAndMouse::VIRTUAL_KEY,
+    hold_ms: u64,
+) {
     use windows::Win32::UI::Input::KeyboardAndMouse::{
         SendInput, INPUT, INPUT_0, KEYBDINPUT, KEYEVENTF_KEYUP,
     };

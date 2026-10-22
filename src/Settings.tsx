@@ -4,13 +4,24 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { Effect } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { X, Settings, Palette, PanelTop, Monitor, Layers, Info, Megaphone } from "lucide-react";
+import {
+	X,
+	Settings,
+	Palette,
+	PanelTop,
+	Monitor,
+	LayoutGrid,
+	Layers,
+	Info,
+	Megaphone
+} from "lucide-react";
 import {
 	useSettings,
 	GeneralTab,
 	AppearanceTab,
 	NotchTab,
 	DockTab,
+	LaunchpadTab,
 	OverlaysTab,
 	AboutTab
 } from "./settings/index";
@@ -26,6 +37,7 @@ const TABS: { id: SettingsTab; label: string; icon: typeof Settings }[] = [
 	{ id: "appearance", label: "Appearance", icon: Palette },
 	{ id: "notch", label: "Notch", icon: PanelTop },
 	{ id: "dock", label: "Dock", icon: Monitor },
+	{ id: "launchpad", label: "Launchpad", icon: LayoutGrid },
 	{ id: "overlays", label: "Overlays", icon: Layers },
 	{ id: "about", label: "About", icon: Info }
 ];
@@ -220,8 +232,6 @@ function SettingsApp() {
 							toggleDockAdaptive={settings.toggleDockAdaptive}
 							dockWinNumberEnabled={settings.dockWinNumberEnabled}
 							toggleDockWinNumber={settings.toggleDockWinNumber}
-							launcherEnabled={settings.launcherEnabled}
-							toggleLauncher={settings.toggleLauncher}
 							dockExtrasPosition={settings.dockExtrasPosition}
 							handleDockExtrasPositionChange={settings.handleDockExtrasPositionChange}
 							dockExtrasDrives={settings.dockExtrasDrives}
@@ -239,6 +249,12 @@ function SettingsApp() {
 							handleRemoveDockExtraFolder={settings.handleRemoveDockExtraFolder}
 							startIcon={settings.startIcon}
 							handleStartIconChange={settings.handleStartIconChange}
+						/>
+					)}
+					{activeTab === "launchpad" && (
+						<LaunchpadTab
+							launcherEnabled={settings.launcherEnabled}
+							toggleLauncher={settings.toggleLauncher}
 						/>
 					)}
 					{activeTab === "overlays" && (
