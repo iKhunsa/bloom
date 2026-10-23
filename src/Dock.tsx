@@ -757,21 +757,6 @@ const Dock = memo(function Dock() {
 		}
 	};
 
-	// The background apps list: the same native tray actions as the dock items, with the
-	// dock held open while Windows shows the app's own menu.
-	const runTray = async (trayId: string, menu: boolean) => {
-		setNativeMenuOpen(true);
-		closePopup();
-		setPreviewData(null);
-		try {
-			await invoke(menu ? "show_tray_context_menu" : "activate_tray_icon", { trayId });
-		} catch (error) {
-			showActionError(error);
-		} finally {
-			setNativeMenuOpen(false);
-		}
-	};
-
 	const handleContextMenu = (e: React.MouseEvent, app: AppInfo | null) => {
 		e.stopPropagation();
 		e.preventDefault();
@@ -2080,8 +2065,7 @@ const Dock = memo(function Dock() {
 				{showBgPopup && (
 					<BackgroundAppsPopup
 						containerRef={popupRef}
-						onOpen={(id) => void runTray(id, false)}
-						onMenu={(id) => void runTray(id, true)}
+						onClose={closePopup}
 						scale={scale}
 						bottom={popupBottom}
 					/>
