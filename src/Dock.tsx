@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useLayoutEffect, useMemo, useRef, memo } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, memo } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { invoke } from "@tauri-apps/api/core";
 import { autoIconId, iconUrl } from "./launcher/icons";
@@ -203,8 +203,6 @@ const Dock = memo(function Dock() {
 	const [showAddPopup, setShowAddPopup] = useState(false);
 	// The list of apps running in the background (Bloom's version of the system tray).
 	const [showBgPopup, setShowBgPopup] = useState(false);
-	const [, setBgPopupSize] = useState(0);
-	const bumpBgPopupSize = useCallback(() => setBgPopupSize((n) => n + 1), []);
 	const [nativeMenuOpen, setNativeMenuOpen] = useState(false);
 	const [contextMenu, setContextMenu] = useState<{
 		x: number;
@@ -2084,7 +2082,6 @@ const Dock = memo(function Dock() {
 						containerRef={popupRef}
 						onOpen={(id) => void runTray(id, false)}
 						onMenu={(id) => void runTray(id, true)}
-						onResize={bumpBgPopupSize}
 						scale={scale}
 						bottom={popupBottom}
 					/>

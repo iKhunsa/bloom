@@ -12,8 +12,6 @@ interface BackgroundAppsPopupProps {
 	/** Left click: bring the app up. Right click: show the app's own tray menu. */
 	onOpen: (trayId: string) => void;
 	onMenu: (trayId: string) => void;
-	/** The list changed size (apps loaded or came and went): the dock must widen its clickable area. */
-	onResize: () => void;
 	containerRef: React.RefObject<HTMLDivElement | null>;
 	scale: number;
 	bottom: number;
@@ -26,7 +24,6 @@ const exeStem = (path: string) =>
 export function BackgroundAppsPopup({
 	onOpen,
 	onMenu,
-	onResize,
 	containerRef,
 	scale,
 	bottom
@@ -57,15 +54,6 @@ export function BackgroundAppsPopup({
 				.catch(() => {});
 		}
 	}, [apps, icons]);
-
-	// Report size changes to the dock once the card is on screen.
-	useEffect(() => {
-		const card = containerRef.current;
-		if (!card) return;
-		const watcher = new ResizeObserver(onResize);
-		watcher.observe(card);
-		return () => watcher.disconnect();
-	}, [containerRef, onResize]);
 
 	const rows = useMemo<Row[]>(
 		() =>

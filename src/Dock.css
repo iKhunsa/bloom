@@ -789,18 +789,12 @@ body {
 	width: 270px;
 	height: auto;
 	max-height: 440px;
-	/* Opaque: the blur only works over Bloom itself, so a see-through card showed the window behind. */
-	background: #1d1e25;
-	-webkit-backdrop-filter: none;
-	backdrop-filter: none;
 }
 
-/* The list sizes to its rows (the shared rule would collapse it in an auto-height card). The
-   bottom padding keeps the last row clear of the dock pill the card tucks behind. */
+/* The list sizes to its rows (the shared rule would collapse it in an auto-height card). */
 .bgapps-popup .popup-apps-scroll {
 	flex: none;
-	max-height: 400px;
-	padding-bottom: 22px;
+	max-height: 360px;
 }
 
 .bgapps-head {
