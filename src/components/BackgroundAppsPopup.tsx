@@ -9,7 +9,9 @@ interface Row extends TrayApp {
 }
 
 interface BackgroundAppsPopupProps {
-	onClose: () => void;
+	/** Left click: bring the app up. Right click: show the app's own tray menu. */
+	onOpen: (trayId: string) => void;
+	onMenu: (trayId: string) => void;
 	containerRef: React.RefObject<HTMLDivElement | null>;
 	scale: number;
 	bottom: number;
@@ -20,7 +22,8 @@ const exeStem = (path: string) =>
 
 /** Apps running in the background, from the notification area: Bloom's replacement for the tray flyout. */
 export function BackgroundAppsPopup({
-	onClose,
+	onOpen,
+	onMenu,
 	containerRef,
 	scale,
 	bottom
@@ -88,16 +91,10 @@ export function BackgroundAppsPopup({
 								key={app.path}
 								className="popup-app-row"
 								title="Click to open, right-click for its menu"
-								onClick={() => {
-									invoke("activate_tray_icon", { trayId: app.tray_ids[0] }).catch(console.error);
-									onClose();
-								}}
+								onClick={() => onOpen(app.tray_ids[0])}
 								onContextMenu={(e) => {
 									e.preventDefault();
-									invoke("show_tray_context_menu", { trayId: app.tray_ids[0] }).catch(
-										console.error
-									);
-									onClose();
+									onMenu(app.tray_ids[0]);
 								}}
 							>
 								<span className="bgapps-icon">

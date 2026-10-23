@@ -786,9 +786,15 @@ body {
 
 /* Background apps popup: a compact list, one row per app that lives in the tray. */
 .add-app-popup.bgapps-popup {
-	width: 260px;
+	width: 270px;
 	height: auto;
 	max-height: 440px;
+}
+
+/* The list sizes to its rows (the shared rule would collapse it in an auto-height card). */
+.bgapps-popup .popup-apps-scroll {
+	flex: none;
+	max-height: 360px;
 }
 
 .bgapps-head {
