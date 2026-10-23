@@ -11,6 +11,7 @@ import { initTheme } from "./theme";
 import { useSettingsSync } from "./hooks/useSettingsSync";
 import { reloadIfMirrorWasStale } from "./hooks/settingsMirror";
 
+import { BackgroundAppsPopup } from "./components/BackgroundAppsPopup";
 import { mergeTrayApps, selectDockTrayApps, type AppInfo, type TrayApp } from "./dockApps";
 import { driveLetter, hideDrive, removeCustomFolder, type DockExtra } from "./dockExtras";
 import { createRegionSender, measureElements, padRect, type RegionRect } from "./windowRegion";
@@ -200,6 +201,8 @@ const Dock = memo(function Dock() {
 	const [isOverlapped, setIsOverlapped] = useState(false);
 	const [isVisible, setIsVisible] = useState(true);
 	const [showAddPopup, setShowAddPopup] = useState(false);
+	// The list of apps running in the background (Bloom's version of the system tray).
+	const [showBgPopup, setShowBgPopup] = useState(false);
 	const [nativeMenuOpen, setNativeMenuOpen] = useState(false);
 	const [contextMenu, setContextMenu] = useState<{
 		x: number;
@@ -252,15 +255,16 @@ const Dock = memo(function Dock() {
 	// behind the pill (which paints above it), so the seam stays fused even
 	// if the measurement is off by a few px at some scale.
 	useEffect(() => {
-		if (showAddPopup) {
+		if (showAddPopup || showBgPopup) {
 			const h = dockRef.current?.getBoundingClientRect().height ?? 0;
 			if (h > 0) setPopupBottom(h / (scale || 1) - 14);
 		}
-	}, [showAddPopup, scale]);
+	}, [showAddPopup, showBgPopup, scale]);
 
 	const isCurrentlyHovered = isDockHovered || isEdgeHovered;
 	const [interactionState, setInteractionState] = useState<"active" | "grace" | "none">("none");
-	const isAnyInteraction = isCurrentlyHovered || !!contextMenu || showAddPopup || nativeMenuOpen;
+	const isAnyInteraction =
+		isCurrentlyHovered || !!contextMenu || showAddPopup || showBgPopup || nativeMenuOpen;
 
 	const previewTimerRef = useRef<any>(null);
 	const isPreviewHoveredRef = useRef(false);
@@ -807,9 +811,7 @@ const Dock = memo(function Dock() {
 	const hideTaskView = () => {
 		setDockTaskView(false);
 		localStorage.setItem("bloom-dock-task-view", "false");
-		invoke("save_setting", { key: "bloom-dock-task-view", value: "false" }).catch(
-			showActionError
-		);
+		invoke("save_setting", { key: "bloom-dock-task-view", value: "false" }).catch(showActionError);
 		closeMenu();
 	};
 
@@ -838,6 +840,7 @@ const Dock = memo(function Dock() {
 
 	const closePopup = () => {
 		setShowAddPopup(false);
+		setShowBgPopup(false);
 		invoke("set_menu_open", { open: false, rect: null }).catch(() => {});
 	};
 
@@ -849,6 +852,7 @@ const Dock = memo(function Dock() {
 			setContextMenu(null);
 			setActiveSubmenu(null);
 			setShowAddPopup(false);
+			setShowBgPopup(false);
 		});
 		return () => {
 			unlisten.then((f) => f());
@@ -919,7 +923,7 @@ const Dock = memo(function Dock() {
 				height: Math.round(r.height)
 			};
 			open = true;
-		} else if (showAddPopup && popupRef.current) {
+		} else if ((showAddPopup || showBgPopup) && popupRef.current) {
 			const r = popupRef.current.getBoundingClientRect();
 			rect = {
 				x: Math.round(r.x),
@@ -931,7 +935,16 @@ const Dock = memo(function Dock() {
 		}
 
 		invoke("set_menu_open", { open, rect }).catch(() => {});
-	}, [contextMenu, menuPos, showAddPopup, pinnedApps, activeApps, activeSubmenu, scale]);
+	}, [
+		contextMenu,
+		menuPos,
+		showAddPopup,
+		showBgPopup,
+		pinnedApps,
+		activeApps,
+		activeSubmenu,
+		scale
+	]);
 
 	const dockItems = useMemo(() => {
 		const runningMap = new Map();
@@ -1738,42 +1751,48 @@ const Dock = memo(function Dock() {
 					{!contextMenu.extra &&
 						!contextMenu.taskView &&
 						(!contextMenu.app || contextMenu.app.path === "start") && (
-						<div
-							style={{
-								maxHeight: Math.max(64, window.innerHeight / scale - 200),
-								overflowY: "auto"
-							}}
-						>
-							{(contextMenu.app
-								? [
-										["installed-apps", "Installed Apps"],
-										["power-options", "Power Options"],
-										["device-manager", "Device Manager"],
-										["network-connections", "Network Connections"],
-										["disk-management", "Disk Management"],
-										["computer-management", "Computer Management"],
-										["task-manager", "Task Manager"],
-										["settings", "Settings"]
-									]
-								: [
-										["task-manager", "Task Manager"],
-										["taskbar-settings", "Taskbar Settings"]
-									]
-							).map(([action, label]) => (
-								<div
-									key={action}
-									className="menu-item"
-									onClick={() => {
-										closeMenu();
-										invoke("open_system_action", { action }).catch(showActionError);
-									}}
-								>
-									{label}
-								</div>
-							))}
-							<div className="menu-divider" />
-						</div>
-					)}
+							<div
+								style={{
+									maxHeight: Math.max(64, window.innerHeight / scale - 200),
+									overflowY: "auto"
+								}}
+							>
+								{(contextMenu.app
+									? [
+											["background-apps", "Background Apps"],
+											["installed-apps", "Installed Apps"],
+											["power-options", "Power Options"],
+											["device-manager", "Device Manager"],
+											["network-connections", "Network Connections"],
+											["disk-management", "Disk Management"],
+											["computer-management", "Computer Management"],
+											["task-manager", "Task Manager"],
+											["settings", "Settings"]
+										]
+									: [
+											["background-apps", "Background Apps"],
+											["task-manager", "Task Manager"],
+											["taskbar-settings", "Taskbar Settings"]
+										]
+								).map(([action, label]) => (
+									<div
+										key={action}
+										className="menu-item"
+										onClick={() => {
+											closeMenu();
+											if (action === "background-apps") {
+												setShowBgPopup(true);
+												return;
+											}
+											invoke("open_system_action", { action }).catch(showActionError);
+										}}
+									>
+										{label}
+									</div>
+								))}
+								<div className="menu-divider" />
+							</div>
+						)}
 					{contextMenu.extra ? (
 						<>
 							<div
@@ -2041,6 +2060,17 @@ const Dock = memo(function Dock() {
 				style={{ display: "none" }}
 				onChange={handleIconFileSelect}
 			/>
+
+			<AnimatePresence>
+				{showBgPopup && (
+					<BackgroundAppsPopup
+						containerRef={popupRef}
+						onClose={closePopup}
+						scale={scale}
+						bottom={popupBottom}
+					/>
+				)}
+			</AnimatePresence>
 
 			<AnimatePresence>
 				{showAddPopup && (
