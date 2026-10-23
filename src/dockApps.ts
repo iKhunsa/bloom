@@ -25,15 +25,14 @@ const ownsVisibleWindow = (window: AppInfo, tray: TrayApp) =>
 		tray.window_handles.includes(hwnd as number)
 	);
 
-// An unpinned notification icon becomes a dock item only after its app has
-// appeared with a window. Pinned apps are eligible immediately at startup.
-// Forget observed apps when their tray icon exits, so a later tray-only launch
-// does not inherit a previous session's dock slot.
+// A notification icon only matters to the dock while its app has a window: it hands
+// that window its tray menu. Apps left in the tray after their window closed are
+// not shown (WhatsApp, Figma, QuickLook...).
 export function selectDockTrayApps(
 	windows: AppInfo[],
 	tray: TrayApp[],
 	previouslyOpened: Set<string>,
-	isPinned: (app: TrayApp) => boolean
+	_isPinned: (app: TrayApp) => boolean
 ): { visible: TrayApp[]; observed: Set<string> } {
 	const observed = new Set<string>();
 	for (const app of tray) {
@@ -43,7 +42,10 @@ export function selectDockTrayApps(
 		}
 	}
 	return {
-		visible: tray.filter((app) => observed.has(trayPath(app)) || isPinned(app)),
+		// An app that only lives in the tray (its window closed) isn't in the dock any
+		// more: closing it should clear its slot, pinned or not. A pinned app stays as
+		// its pin, and one with a window keeps its tray menu through the merge below.
+		visible: tray.filter((app) => windows.some((window) => ownsVisibleWindow(window, app))),
 		observed
 	};
 }
