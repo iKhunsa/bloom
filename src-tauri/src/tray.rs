@@ -496,7 +496,12 @@ unsafe fn matches_icon_label(label: &str, target: &Icon) -> bool {
         .and_then(|s| s.to_str())
         .map(normalized_label)
         .unwrap_or_default();
-    (!friendly.is_empty() && name.contains(&friendly)) || (!stem.is_empty() && name.contains(&stem))
+    // The name the dock shows ("WhatsApp" for WhatsApp.Root.exe) is usually what the tray
+    // labels the icon with; too short a name (EA) would match unrelated labels.
+    let display = normalized_label(&crate::commands::app_display_name(&target.path, None));
+    (!friendly.is_empty() && name.contains(&friendly))
+        || (!stem.is_empty() && name.contains(&stem))
+        || (display.len() >= 4 && name.contains(&display))
 }
 
 /// Shell_NotifyIconGetRect points at the chevron for hidden icons. The live
